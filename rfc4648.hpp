@@ -317,7 +317,6 @@ namespace bizwen
 	inline constexpr Out rfc4648_copy(In begin, In end, Out first)
 	{
 		static_assert(std::contiguous_iterator<In>);
-		static_assert(std::contiguous_iterator<Out>);
 		using in_char = std::remove_cvref_t<decltype(*begin)>;
 		static_assert(std::is_same_v<in_char, char> || std::is_same_v<in_char, unsigned char> || std::is_same_v<in_char, std::byte>);
 		using out_char = std::remove_cvref_t<decltype(*first)>;
@@ -346,7 +345,6 @@ namespace bizwen
 	inline constexpr Out rfc4648_copy(rfc4648_ctx& ctx, In begin, In end, Out first)
 	{
 		static_assert(std::contiguous_iterator<In>);
-		static_assert(std::contiguous_iterator<Out>);
 		using in_char = std::remove_cvref_t<decltype(*begin)>;
 		static_assert(std::is_same_v<in_char, char> || std::is_same_v<in_char, unsigned char> || std::is_same_v<in_char, std::byte>);
 		using out_char = std::remove_cvref_t<decltype(*first)>;
@@ -373,7 +371,6 @@ namespace bizwen
 	template <rfc4648_kind Kind = rfc4648_kind::base64, bool Padding = true, typename Out>
 	inline constexpr Out rfc4648_copy(rfc4648_ctx& ctx, Out first)
 	{
-		static_assert(std::contiguous_iterator<Out>);
 		using out_char = std::remove_cvref_t<decltype(*first)>;
 		using traits = rfc4648_traits<out_char>;
 

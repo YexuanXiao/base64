@@ -19,6 +19,4 @@ int main()
 	std::string dest2;
 	dest2.resize((src.size() + 3) / 3 * 4);
 	bizwen::rfc4648_copy(src, dest2.begin());
-
-	return 0;
 }
