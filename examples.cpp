@@ -1,5 +1,6 @@
 #include <string>
-#include <rfc4648.hpp>
+#include "rfc4648.hpp"
+
 int main()
 {
 	std::string src{ "ABCDEFGHIJKLMN" };
@@ -14,6 +15,10 @@ int main()
 	it = rfc4648_copy(ctx, src.begin(), src.end(), it);
 	it = rfc4648_copy(ctx, src.begin(), src.end(), it);
 	rfc4648_copy(ctx, it);
+
+	std::string dest2;
+	dest2.resize((src.size() + 3) / 3 * 4);
+	bizwen::rfc4648_copy(src, dest2.begin());
 
 	return 0;
 }

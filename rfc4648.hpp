@@ -2,11 +2,10 @@
 #include <type_traits>
 #include <concepts>
 #include <memory>
-
+#include <ranges>
 
 namespace bizwen
 {
-
 	template <typename CharType>
 	struct rfc4648_traits;
 	template <>
@@ -137,6 +136,17 @@ namespace bizwen
 				return Traits::base16_lower;
 		}
 
+		template <rfc4648_kind Kind>
+		inline consteval auto get_family()
+		{
+			if constexpr (Kind == rfc4648_kind::base64 || Kind == rfc4648_kind::base64_url)
+				return rfc4648_kind::base64;
+			if constexpr (Kind == rfc4648_kind::base16 || Kind == rfc4648_kind::base16_lower)
+				return rfc4648_kind::base16;
+			else
+				return rfc4648_kind::base32;
+		}
+
 		template <typename A, typename I, typename O>
 		inline constexpr void copy_impl_b64_3(A alphabet, I begin, O& first)
 		{
@@ -157,7 +167,7 @@ namespace bizwen
 			*(first++) = alphabet[k];
 		}
 
-		template <bool padding = true, typename A, typename I, typename O>
+		template <bool Padding, typename A, typename I, typename O>
 		inline constexpr void copy_impl_b64_2(A alphabet, I begin, O& first)
 		{
 			auto a = *(begin++);
@@ -171,13 +181,13 @@ namespace bizwen
 			auto g = (d << 2) & 0b111'100; // XXXX00
 			*(first++) = alphabet[g];
 
-			if constexpr (padding)
+			if constexpr (Padding)
 			{
 				*first = alphabet[64];
 			}
 		}
 
-		template <bool padding = true, typename A, typename I, typename O>
+		template <bool Padding, typename A, typename I, typename O>
 		inline constexpr void copy_impl_b64_1(A alphabet, I begin, O& first)
 		{
 			auto a = *(begin++);
@@ -186,14 +196,14 @@ namespace bizwen
 			auto c = (a << 4) & 0b110'000; // XX0000
 			*(first++) = alphabet[c];
 
-			if constexpr (padding)
+			if constexpr (Padding)
 			{
 				*(first++) = alphabet[64]; // pad1
 				*first = alphabet[64]; // pad2
 			}
 		}
 
-		template <bool padding = true, typename A, typename I, typename O>
+		template <bool Padding, typename A, typename I, typename O>
 		inline constexpr void copy_impl_b64(A alphabet, I begin, I end, O& first)
 		{
 			while (end - begin > 2)
@@ -203,9 +213,9 @@ namespace bizwen
 			}
 
 			if (end - begin == 2)
-				copy_impl_b64_2<padding>(alphabet, begin, first);
+				copy_impl_b64_2<Padding>(alphabet, begin, first);
 			else if (end - begin != 0) // == 1
-				copy_impl_b64_1<padding>(alphabet, begin, first);
+				copy_impl_b64_1<Padding>(alphabet, begin, first);
 		}
 
 		template <typename A, typename I, typename O>
@@ -273,12 +283,41 @@ namespace bizwen
 				ctx.effective = 0;
 			}
 		}
+
+		template <bool Padding, typename A, typename O>
+		inline constexpr void copy_impl_b64_ctx(A alphabet, rfc4648_ctx& ctx, O& first)
+		{
+			auto effective = ctx.effective;
+
+			if (effective == 2)
+			{
+				unsigned char buf[2];
+				buf[0] = ctx.buf0;
+				buf[1] = ctx.buf1;
+				detail::copy_impl_b64_2<Padding>(alphabet, std::begin(buf), first);
+			}
+			else if (effective != 0) // == 1
+			{
+				unsigned char buf[1];
+				buf[0] = ctx.buf0;
+				detail::copy_impl_b64_1<Padding>(alphabet, std::begin(buf), first);
+			}
+
+			// clear ctx
+			ctx.effective = 0;
+		}
+
+		template <bool Padding = true, typename A, typename I, typename O>
+		inline constexpr void copy_impl_b32(A alphabet, I begin, I end, O& first)
+		{
+		}
 	}
 
-	template <rfc4648_kind Kind = rfc4648_kind::base64, bool padding = true, typename In, typename Out>
+	template <rfc4648_kind Kind = rfc4648_kind::base64, bool Padding = true, typename In, typename Out>
 	inline constexpr Out rfc4648_copy(In begin, In end, Out first)
 	{
 		static_assert(std::contiguous_iterator<In>);
+		static_assert(std::contiguous_iterator<Out>);
 		using in_char = std::remove_cvref_t<decltype(*begin)>;
 		static_assert(std::is_same_v<in_char, char> || std::is_same_v<in_char, unsigned char> || std::is_same_v<in_char, std::byte>);
 		using out_char = std::remove_cvref_t<decltype(*first)>;
@@ -286,15 +325,28 @@ namespace bizwen
 		auto begin_ptr = std::to_address(begin);
 		auto end_ptr = std::to_address(end);
 
-		detail::copy_impl_b64(detail::get_alphabet<rfc4648_kind::base64, traits>(), begin_ptr, end_ptr, first);
+		if constexpr (detail::get_family<Kind>() == rfc4648_kind::base64)
+			detail::copy_impl_b64<Padding>(detail::get_alphabet<rfc4648_kind::base64, traits>(), begin_ptr, end_ptr, first);
+		if constexpr (detail::get_family<Kind>() == rfc4648_kind::base32)
+			static_assert(Kind != rfc4648_kind::base64, "Not yet implement!");
+		if constexpr (detail::get_family<Kind>() == rfc4648_kind::base16)
+			static_assert(Kind != rfc4648_kind::base64, "Not yet implement!");
 
 		return first;
 	}
 
+	template <rfc4648_kind Kind = rfc4648_kind::base64, bool Padding = true, typename R, typename Out>
+	inline constexpr Out rfc4648_copy(R&& r, Out first)
+	{
+		return rfc4648_copy<Kind, Padding>(r.begin(), r.end(), first);
+	}
+
+	// NB: don't need padding
 	template <rfc4648_kind Kind = rfc4648_kind::base64, typename In, typename Out>
 	inline constexpr Out rfc4648_copy(rfc4648_ctx& ctx, In begin, In end, Out first)
 	{
 		static_assert(std::contiguous_iterator<In>);
+		static_assert(std::contiguous_iterator<Out>);
 		using in_char = std::remove_cvref_t<decltype(*begin)>;
 		static_assert(std::is_same_v<in_char, char> || std::is_same_v<in_char, unsigned char> || std::is_same_v<in_char, std::byte>);
 		using out_char = std::remove_cvref_t<decltype(*first)>;
@@ -302,36 +354,36 @@ namespace bizwen
 		auto begin_ptr = std::to_address(begin);
 		auto end_ptr = std::to_address(end);
 
-		detail::copy_impl_b64_ctx(detail::get_alphabet<rfc4648_kind::base64, traits>(), ctx, begin_ptr, end_ptr, first);
+		if constexpr (detail::get_family<Kind>() == rfc4648_kind::base64)
+			detail::copy_impl_b64_ctx(detail::get_alphabet<rfc4648_kind::base64, traits>(), ctx, begin_ptr, end_ptr, first);
+		if constexpr (detail::get_family<Kind>() == rfc4648_kind::base32)
+			static_assert(Kind != rfc4648_kind::base64, "Not yet implement!");
+		if constexpr (detail::get_family<Kind>() == rfc4648_kind::base16)
+			static_assert(Kind != rfc4648_kind::base64, "Not yet implement!");
 
 		return first;
 	}
 
-	template <rfc4648_kind Kind = rfc4648_kind::base64, bool padding = true, typename Out>
+	template <rfc4648_kind Kind = rfc4648_kind::base64, typename R, typename Out>
+	inline constexpr Out rfc4648_copy(rfc4648_ctx& ctx, R&& r, Out first)
+	{
+		return rfc4648_copy<Kind>(ctx, r.begin(), r.end(), first);
+	}
+
+	template <rfc4648_kind Kind = rfc4648_kind::base64, bool Padding = true, typename Out>
 	inline constexpr Out rfc4648_copy(rfc4648_ctx& ctx, Out first)
 	{
+		static_assert(std::contiguous_iterator<Out>);
 		using out_char = std::remove_cvref_t<decltype(*first)>;
 		using traits = rfc4648_traits<out_char>;
 
-		auto effective = ctx.effective;
-
-		if (effective == 2)
-		{
-			unsigned char buf[2];
-			buf[0] = ctx.buf0;
-			buf[1] = ctx.buf1;
-			detail::copy_impl_b64_2<padding>(detail::get_alphabet<rfc4648_kind::base64, traits>(), std::begin(buf), first);
-		}
-		else if (effective != 0) // == 1
-		{
-			unsigned char buf[1];
-			buf[0] = ctx.buf0;
-			detail::copy_impl_b64_1<padding>(detail::get_alphabet<rfc4648_kind::base64, traits>(), std::begin(buf), first);
-		}
-
-		ctx.effective = 0;
+		if constexpr (detail::get_family<Kind>() == rfc4648_kind::base64)
+			detail::copy_impl_b64_ctx<Padding>(detail::get_alphabet<rfc4648_kind::base64, traits>(), ctx, first);
+		if constexpr (detail::get_family<Kind>() == rfc4648_kind::base32)
+			static_assert(Kind != rfc4648_kind::base64, "Not yet implement!");
+		if constexpr (detail::get_family<Kind>() == rfc4648_kind::base16)
+			static_assert(Kind != rfc4648_kind::base64, "Not yet implement!");
 
 		return first;
 	}
-
 }
