@@ -10,7 +10,7 @@ Support non-padding for secure base64 url variant.
 
 Support `constexpr` compile-time caculation.
 
-C++20 required (`consteval` and concepts).
+C++23 required (`consteval`, concepts, endian and byteswap).
 
 ## Status
 
@@ -88,5 +88,10 @@ int main()
     std::string dest2;
     dest2.resize((src.size() + 3) / 3 * 4);
     bizwen::rfc4648_copy(src, dest2.begin());
+
+    // byte array and wstring
+    std::wstring dest3;
+	dest3.resize((src.size() + 3) / 3 * 4);
+	bizwen::rfc4648_copy((std::byte*)src.data(), (std::byte*)src.data() + src.size(), dest3.begin());
 }
 ```
