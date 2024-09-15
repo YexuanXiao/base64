@@ -8,7 +8,6 @@
 #include <ranges>
 #include <type_traits>
 
-
 namespace bizwen
 {
 template <typename CharType> struct rfc4648_traits;
@@ -16,12 +15,12 @@ template <> struct rfc4648_traits<char>
 {
     static inline constexpr auto base64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
     static inline constexpr auto base64_url = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_=";
-    static inline constexpr auto base32 = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
-    static inline constexpr auto base32_lower = "abcdefghijklmnopqrstuvwxyz234567";
-    static inline constexpr auto base32_hex = "0123456789ABCDEFGHIJKLMNOPQRSTUV";
-    static inline constexpr auto base32_hex_lower = "0123456789abcdefghijklmnopqrstuv";
-    static inline constexpr auto base32_crockford = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
-    static inline constexpr auto base32_crockford_lower = "0123456789abcdefghjkmnpqrstvwxyz";
+    static inline constexpr auto base32 = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567=";
+    static inline constexpr auto base32_lower = "abcdefghijklmnopqrstuvwxyz234567=";
+    static inline constexpr auto base32_hex = "0123456789ABCDEFGHIJKLMNOPQRSTUV=";
+    static inline constexpr auto base32_hex_lower = "0123456789abcdefghijklmnopqrstuv=";
+    static inline constexpr auto base32_crockford = "0123456789ABCDEFGHJKMNPQRSTVWXYZ=";
+    static inline constexpr auto base32_crockford_lower = "0123456789abcdefghjkmnpqrstvwxyz=";
     static inline constexpr auto base16 = base32_hex;
     static inline constexpr auto base16_lower = base32_hex_lower;
 };
@@ -29,12 +28,12 @@ template <> struct rfc4648_traits<wchar_t>
 {
     static inline constexpr auto base64 = L"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
     static inline constexpr auto base64_url = L"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_=";
-    static inline constexpr auto base32 = L"ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
-    static inline constexpr auto base32_lower = L"abcdefghijklmnopqrstuvwxyz234567";
-    static inline constexpr auto base32_hex = L"0123456789ABCDEFGHIJKLMNOPQRSTUV";
-    static inline constexpr auto base32_hex_lower = L"0123456789abcdefghijklmnopqrstuv";
-    static inline constexpr auto base32_crockford = L"0123456789ABCDEFGHJKMNPQRSTVWXYZ";
-    static inline constexpr auto base32_crockford_lower = L"0123456789abcdefghjkmnpqrstvwxyz";
+    static inline constexpr auto base32 = L"ABCDEFGHIJKLMNOPQRSTUVWXYZ234567=";
+    static inline constexpr auto base32_lower = L"abcdefghijklmnopqrstuvwxyz234567=";
+    static inline constexpr auto base32_hex = L"0123456789ABCDEFGHIJKLMNOPQRSTUV=";
+    static inline constexpr auto base32_hex_lower = L"0123456789abcdefghijklmnopqrstuv=";
+    static inline constexpr auto base32_crockford = L"0123456789ABCDEFGHJKMNPQRSTVWXYZ=";
+    static inline constexpr auto base32_crockford_lower = L"0123456789abcdefghjkmnpqrstvwxyz=";
     static inline constexpr auto base16 = base32_hex;
     static inline constexpr auto base16_lower = base32_hex_lower;
 };
@@ -42,12 +41,12 @@ template <> struct rfc4648_traits<char8_t>
 {
     static inline constexpr auto base64 = u8"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
     static inline constexpr auto base64_url = u8"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_=";
-    static inline constexpr auto base32 = u8"ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
-    static inline constexpr auto base32_lower = u8"abcdefghijklmnopqrstuvwxyz234567";
-    static inline constexpr auto base32_hex = u8"0123456789ABCDEFGHIJKLMNOPQRSTUV";
-    static inline constexpr auto base32_hex_lower = u8"0123456789abcdefghijklmnopqrstuv";
-    static inline constexpr auto base32_crockford = u8"0123456789ABCDEFGHJKMNPQRSTVWXYZ";
-    static inline constexpr auto base32_crockford_lower = u8"0123456789abcdefghjkmnpqrstvwxyz";
+    static inline constexpr auto base32 = u8"ABCDEFGHIJKLMNOPQRSTUVWXYZ234567=";
+    static inline constexpr auto base32_lower = u8"abcdefghijklmnopqrstuvwxyz234567=";
+    static inline constexpr auto base32_hex = u8"0123456789ABCDEFGHIJKLMNOPQRSTUV=";
+    static inline constexpr auto base32_hex_lower = u8"0123456789abcdefghijklmnopqrstuv=";
+    static inline constexpr auto base32_crockford = u8"0123456789ABCDEFGHJKMNPQRSTVWXYZ=";
+    static inline constexpr auto base32_crockford_lower = u8"0123456789abcdefghjkmnpqrstvwxyz=";
     static inline constexpr auto base16 = base32_hex;
     static inline constexpr auto base16_lower = base32_hex_lower;
 };
@@ -55,12 +54,12 @@ template <> struct rfc4648_traits<char16_t>
 {
     static inline constexpr auto base64 = u"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
     static inline constexpr auto base64_url = u"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_=";
-    static inline constexpr auto base32 = u"ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
-    static inline constexpr auto base32_lower = u"abcdefghijklmnopqrstuvwxyz234567";
-    static inline constexpr auto base32_hex = u"0123456789ABCDEFGHIJKLMNOPQRSTUV";
-    static inline constexpr auto base32_hex_lower = u"0123456789abcdefghijklmnopqrstuv";
-    static inline constexpr auto base32_crockford = u"0123456789ABCDEFGHJKMNPQRSTVWXYZ";
-    static inline constexpr auto base32_crockford_lower = u"0123456789abcdefghjkmnpqrstvwxyz";
+    static inline constexpr auto base32 = u"ABCDEFGHIJKLMNOPQRSTUVWXYZ234567=";
+    static inline constexpr auto base32_lower = u"abcdefghijklmnopqrstuvwxyz234567=";
+    static inline constexpr auto base32_hex = u"0123456789ABCDEFGHIJKLMNOPQRSTUV=";
+    static inline constexpr auto base32_hex_lower = u"0123456789abcdefghijklmnopqrstuv=";
+    static inline constexpr auto base32_crockford = u"0123456789ABCDEFGHJKMNPQRSTVWXYZ=";
+    static inline constexpr auto base32_crockford_lower = u"0123456789abcdefghjkmnpqrstvwxyz=";
     static inline constexpr auto base16 = base32_hex;
     static inline constexpr auto base16_lower = base32_hex_lower;
 };
@@ -68,12 +67,12 @@ template <> struct rfc4648_traits<char32_t>
 {
     static inline constexpr auto base64 = U"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
     static inline constexpr auto base64_url = U"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_=";
-    static inline constexpr auto base32 = U"ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
-    static inline constexpr auto base32_lower = U"abcdefghijklmnopqrstuvwxyz234567";
-    static inline constexpr auto base32_hex = U"0123456789ABCDEFGHIJKLMNOPQRSTUV";
-    static inline constexpr auto base32_hex_lower = U"0123456789abcdefghijklmnopqrstuv";
-    static inline constexpr auto base32_crockford = U"0123456789ABCDEFGHJKMNPQRSTVWXYZ";
-    static inline constexpr auto base32_crockford_lower = U"0123456789abcdefghjkmnpqrstvwxyz";
+    static inline constexpr auto base32 = U"ABCDEFGHIJKLMNOPQRSTUVWXYZ234567=";
+    static inline constexpr auto base32_lower = U"abcdefghijklmnopqrstuvwxyz234567=";
+    static inline constexpr auto base32_hex = U"0123456789ABCDEFGHIJKLMNOPQRSTUV=";
+    static inline constexpr auto base32_hex_lower = U"0123456789abcdefghijklmnopqrstuv=";
+    static inline constexpr auto base32_crockford = U"0123456789ABCDEFGHJKMNPQRSTVWXYZ=";
+    static inline constexpr auto base32_crockford_lower = U"0123456789abcdefghjkmnpqrstvwxyz=";
     static inline constexpr auto base16 = base32_hex;
     static inline constexpr auto base16_lower = base32_hex_lower;
 };
@@ -200,6 +199,7 @@ template <typename A, typename I, typename O> inline constexpr void copy_impl_b6
 template <typename A, typename I, typename O> inline constexpr void copy_impl_b64_3(A alphabet, I begin, O &first)
 {
     auto data = chars_to_int_big_endian<3>(begin);
+    static_assert(sizeof(data) == 4);
 
     *(first++) = alphabet[(data >> 26) & 63];
     *(first++) = alphabet[(data >> 20) & 63];
@@ -211,6 +211,7 @@ template <bool Padding, typename A, typename I, typename O>
 inline constexpr void copy_impl_b64_2(A alphabet, I begin, O &first)
 {
     auto data = chars_to_int_big_endian<2>(begin);
+    static_assert(sizeof(data) == 4);
 
     *(first++) = alphabet[(data >> 26) & 63];
     *(first++) = alphabet[(data >> 20) & 63];
@@ -224,8 +225,8 @@ template <bool Padding, typename A, typename I, typename O>
 inline constexpr void copy_impl_b64_1(A alphabet, I begin, O &first)
 {
     auto a = to_uc(*begin);
-    auto b = a >> 2;               // XXXXXX
-    auto c = (a << 4) & 0b110'000; // XX0000
+    auto b = a >> 2;        // XXXXXX
+    auto c = (a << 4) & 63; // XX0000
 
     *(first++) = alphabet[b];
     *(first++) = alphabet[c];
@@ -246,7 +247,7 @@ inline constexpr void copy_impl_b64(A alphabet, I begin, I end, O &first)
             copy_impl_b64_6(alphabet, begin, first);
     }
 
-    for (; end - begin > 3; begin += 3)
+    for (; end - begin > 2; begin += 3)
         copy_impl_b64_3(alphabet, begin, first);
 
     if (end - begin == 2)
@@ -347,9 +348,115 @@ inline constexpr void copy_impl_b64_ctx(A alphabet, rfc4648_ctx &ctx, O &first)
     ctx.effective = 0;
 }
 
+template <typename A, typename I, typename O> inline constexpr void copy_impl_b32_5(A alphabet, I begin, O &first)
+{
+    auto data = chars_to_int_big_endian<5>(begin);
+    static_assert(sizeof(data) == 8);
+
+    *(first++) = alphabet[(data >> 59) & 63];
+    *(first++) = alphabet[(data >> 54) & 63];
+    *(first++) = alphabet[(data >> 49) & 63];
+    *(first++) = alphabet[(data >> 44) & 63];
+    *(first++) = alphabet[(data >> 39) & 63];
+    *(first++) = alphabet[(data >> 34) & 63];
+    *(first++) = alphabet[(data >> 29) & 63];
+    *(first++) = alphabet[(data >> 24) & 63];
+}
+
+template <bool Padding, typename A, typename I, typename O>
+inline constexpr void copy_impl_b32_4(A alphabet, I begin, O &first)
+{
+    auto data = chars_to_int_big_endian<4>(begin);
+    static_assert(sizeof(data) == 8);
+
+    *(first++) = alphabet[(data >> 59) & 63];
+    *(first++) = alphabet[(data >> 54) & 63];
+    *(first++) = alphabet[(data >> 49) & 63];
+    *(first++) = alphabet[(data >> 44) & 63];
+    *(first++) = alphabet[(data >> 39) & 63];
+    *(first++) = alphabet[(data >> 34) & 63];
+    *(first++) = alphabet[(data >> 29) & 63];
+
+    if constexpr (Padding)
+        *(first++) = alphabet[32];
+}
+
+template <bool Padding, typename A, typename I, typename O>
+inline constexpr void copy_impl_b32_3(A alphabet, I begin, O &first)
+{
+    auto data = chars_to_int_big_endian<3>(begin);
+    static_assert(sizeof(data) == 8);
+
+    *(first++) = alphabet[(data >> 59) & 63];
+    *(first++) = alphabet[(data >> 54) & 63];
+    *(first++) = alphabet[(data >> 49) & 63];
+    *(first++) = alphabet[(data >> 44) & 63];
+    *(first++) = alphabet[(data >> 39) & 63];
+
+    if constexpr (Padding)
+    {
+        *(first++) = alphabet[32];
+        *(first++) = alphabet[32];
+        *(first++) = alphabet[32];
+    }
+}
+
+template <bool Padding, typename A, typename I, typename O>
+inline constexpr void copy_impl_b32_2(A alphabet, I begin, O &first)
+{
+    auto data = chars_to_int_big_endian<2>(begin);
+    static_assert(sizeof(data) == 8);
+
+    *(first++) = alphabet[(data >> 59) & 63];
+    *(first++) = alphabet[(data >> 54) & 63];
+    *(first++) = alphabet[(data >> 49) & 63];
+
+    if constexpr (Padding)
+    {
+        *(first++) = alphabet[32];
+        *(first++) = alphabet[32];
+        *(first++) = alphabet[32];
+        *(first++) = alphabet[32];
+        *(first++) = alphabet[32];
+    }
+}
+
+template <bool Padding, typename A, typename I, typename O>
+inline constexpr void copy_impl_b32_1(A alphabet, I begin, O &first)
+{
+    auto data = chars_to_int_big_endian<2>(begin);
+    static_assert(sizeof(data) == 8);
+
+    auto a = to_uc(*(begin));
+
+    *(first++) = alphabet[a >> 3];
+    *(first++) = alphabet[(a << 2) & 31];
+
+    if constexpr (Padding)
+    {
+        *(first++) = alphabet[32];
+        *(first++) = alphabet[32];
+        *(first++) = alphabet[32];
+        *(first++) = alphabet[32];
+        *(first++) = alphabet[32];
+        *(first++) = alphabet[32];
+    }
+}
+
 template <bool Padding = true, typename A, typename I, typename O>
 inline constexpr void copy_impl_b32(A alphabet, I begin, I end, O &first)
 {
+    for (; end - begin > 4; begin += 5)
+        copy_impl_b32_5(alphabet, begin, first);
+
+    if (end - begin == 4)
+        copy_impl_b32_4<Padding>(alphabet, begin, first);
+    if (end - begin == 3)
+        copy_impl_b32_3<Padding>(alphabet, begin, first);
+    if (end - begin == 2)
+        copy_impl_b32_2<Padding>(alphabet, begin, first);
+    if (end - begin != 0) // == 1
+        copy_impl_b32_1<Padding>(alphabet, begin, first);
 }
 } // namespace detail
 
@@ -368,7 +475,7 @@ inline constexpr Out rfc4648_copy(In begin, In end, Out first)
     if constexpr (detail::get_family<Kind>() == rfc4648_kind::base64)
         detail::copy_impl_b64<Padding>(detail::get_alphabet<rfc4648_kind::base64, traits>(), begin_ptr, end_ptr, first);
     if constexpr (detail::get_family<Kind>() == rfc4648_kind::base32)
-        static_assert(Kind != rfc4648_kind::base64, "Not yet implement!");
+        detail::copy_impl_b32<Padding>(detail::get_alphabet<rfc4648_kind::base32, traits>(), begin_ptr, end_ptr, first);
     if constexpr (detail::get_family<Kind>() == rfc4648_kind::base16)
         static_assert(Kind != rfc4648_kind::base64, "Not yet implement!");
 

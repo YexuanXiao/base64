@@ -41,8 +41,9 @@ int main()
         }
         auto now = std::chrono::steady_clock::now();
 
-        std::cout << "bizwen::rfc4648_copy: " << std::chrono::duration_cast<std::chrono::milliseconds>((pre - now))
-                  << "ms\n";
+        std::cout << "bizwen::rfc4648_copy: " << std::chrono::duration_cast<std::chrono::milliseconds>((now - pre))
+                  << '\n'
+                  << dest << '\n';
     }
 }
 
