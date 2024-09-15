@@ -79,9 +79,8 @@ template <> struct rfc4648_traits<char32_t>
 
 struct rfc4648_ctx
 {
-    unsigned char effective{}; // 0、1、2
-    unsigned char buf0{};
-    unsigned char buf1{};
+    unsigned char effective{}; // 0、1、2 for base64; 0 - 4 for base32
+    unsigned char buf[4];
 };
 
 enum class rfc4648_kind : unsigned char
@@ -267,8 +266,8 @@ inline constexpr void copy_impl_b64_ctx(A alphabet, rfc4648_ctx &ctx, I begin, I
             return;
 
         unsigned char buf[3];
-        buf[0] = ctx.buf0;
-        buf[1] = ctx.buf1;
+        buf[0] = ctx.buf[0];
+        buf[1] = ctx.buf[1];
         buf[2] = to_uc(*(begin++));
 
         copy_impl_b64_3(alphabet, std::begin(buf), first);
@@ -281,7 +280,7 @@ inline constexpr void copy_impl_b64_ctx(A alphabet, rfc4648_ctx &ctx, I begin, I
         }
         else if (end - begin == 1)
         {
-            ctx.buf1 = to_uc(*(begin++));
+            ctx.buf[1] = to_uc(*(begin++));
             ctx.effective = 2;
 
             return;
@@ -289,7 +288,7 @@ inline constexpr void copy_impl_b64_ctx(A alphabet, rfc4648_ctx &ctx, I begin, I
         else // >= 2
         {
             unsigned char buf[3];
-            buf[0] = ctx.buf0;
+            buf[0] = ctx.buf[0];
             buf[1] = to_uc(*(begin++));
             buf[2] = to_uc(*(begin++));
 
@@ -310,13 +309,13 @@ inline constexpr void copy_impl_b64_ctx(A alphabet, rfc4648_ctx &ctx, I begin, I
 
     if (end - begin == 2)
     {
-        ctx.buf0 = to_uc(*(begin++));
-        ctx.buf1 = to_uc(*(begin));
+        ctx.buf[0] = to_uc(*(begin++));
+        ctx.buf[1] = to_uc(*(begin));
         ctx.effective = 2;
     }
     else if (end - begin != 0) // == 1
     {
-        ctx.buf1 = to_uc(*(begin));
+        ctx.buf[1] = to_uc(*(begin));
         ctx.effective = 1;
     }
     else // NB: clear ctx
@@ -333,14 +332,14 @@ inline constexpr void copy_impl_b64_ctx(A alphabet, rfc4648_ctx &ctx, O &first)
     if (effective == 2)
     {
         unsigned char buf[2];
-        buf[0] = ctx.buf0;
-        buf[1] = ctx.buf1;
+        buf[0] = ctx.buf[0];
+        buf[1] = ctx.buf[1];
         detail::copy_impl_b64_2<Padding>(alphabet, std::begin(buf), first);
     }
     else if (effective != 0) // == 1
     {
         unsigned char buf[1];
-        buf[0] = ctx.buf0;
+        buf[0] = ctx.buf[0];
         detail::copy_impl_b64_1<Padding>(alphabet, std::begin(buf), first);
     }
 
