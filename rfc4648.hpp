@@ -10,6 +10,8 @@
 
 namespace bizwen
 {
+namespace detail
+{
 template <typename CharType> struct rfc4648_traits;
 template <> struct rfc4648_traits<char>
 {
@@ -77,11 +79,12 @@ template <> struct rfc4648_traits<char32_t>
     static inline constexpr auto base16_lower = base32_hex_lower;
 };
 
-struct rfc4648_ctx
+struct rfc4648_ctx_impl
 {
     unsigned char effective{}; // 0、1、2 for base64; 0 - 4 for base32
     unsigned char buf[4];
 };
+} // namespace detail
 
 enum class rfc4648_kind : unsigned char
 {
@@ -143,6 +146,7 @@ template <rfc4648_kind Kind> inline consteval auto get_family()
 
 template <std::size_t Count, typename T> inline constexpr auto chars_to_int_big_endian(T begin)
 {
+    static_assert(Count < 9);
     static_assert(CHAR_BIT == 8);
     static_assert(std::endian::native == std::endian::big || std::endian::native == std::endian::little);
     using int32_type = std::conditional_t<sizeof(int) == 4, unsigned int, unsigned long>;
@@ -180,7 +184,7 @@ template <std::size_t Count, typename T> inline constexpr auto chars_to_int_big_
     }
 }
 
-template <typename A, typename I, typename O> inline constexpr void copy_impl_b64_6(A alphabet, I begin, O &first)
+template <typename A, typename I, typename O> inline constexpr void encode_impl_b64_6(A alphabet, I begin, O &first)
 {
     auto data = chars_to_int_big_endian<6>(begin);
     static_assert(sizeof(data) == 8);
@@ -195,7 +199,7 @@ template <typename A, typename I, typename O> inline constexpr void copy_impl_b6
     *(first++) = alphabet[(data >> 16) & 63];
 }
 
-template <typename A, typename I, typename O> inline constexpr void copy_impl_b64_3(A alphabet, I begin, O &first)
+template <typename A, typename I, typename O> inline constexpr void encode_impl_b64_3(A alphabet, I begin, O &first)
 {
     auto data = chars_to_int_big_endian<3>(begin);
     static_assert(sizeof(data) == 4);
@@ -207,7 +211,7 @@ template <typename A, typename I, typename O> inline constexpr void copy_impl_b6
 }
 
 template <bool Padding, typename A, typename I, typename O>
-inline constexpr void copy_impl_b64_2(A alphabet, I begin, O &first)
+inline constexpr void encode_impl_b64_2(A alphabet, I begin, O &first)
 {
     auto data = chars_to_int_big_endian<2>(begin);
     static_assert(sizeof(data) == 4);
@@ -221,7 +225,7 @@ inline constexpr void copy_impl_b64_2(A alphabet, I begin, O &first)
 }
 
 template <bool Padding, typename A, typename I, typename O>
-inline constexpr void copy_impl_b64_1(A alphabet, I begin, O &first)
+inline constexpr void encode_impl_b64_1(A alphabet, I begin, O &first)
 {
     auto a = to_uc(*begin);
     auto b = a >> 2;        // XXXXXX
@@ -238,25 +242,25 @@ inline constexpr void copy_impl_b64_1(A alphabet, I begin, O &first)
 }
 
 template <bool Padding, typename A, typename I, typename O>
-inline constexpr void copy_impl_b64(A alphabet, I begin, I end, O &first)
+inline constexpr void encode_impl_b64(A alphabet, I begin, I end, O &first)
 {
     if constexpr (sizeof(std::size_t) == 8)
     {
         for (; end - begin > 5; begin += 6)
-            copy_impl_b64_6(alphabet, begin, first);
+            encode_impl_b64_6(alphabet, begin, first);
     }
 
     for (; end - begin > 2; begin += 3)
-        copy_impl_b64_3(alphabet, begin, first);
+        encode_impl_b64_3(alphabet, begin, first);
 
     if (end - begin == 2)
-        copy_impl_b64_2<Padding>(alphabet, begin, first);
+        encode_impl_b64_2<Padding>(alphabet, begin, first);
     else if (end - begin != 0) // == 1
-        copy_impl_b64_1<Padding>(alphabet, begin, first);
+        encode_impl_b64_1<Padding>(alphabet, begin, first);
 }
 
 template <typename A, typename I, typename O>
-inline constexpr void copy_impl_b64_ctx(A alphabet, rfc4648_ctx &ctx, I begin, I end, O &first)
+inline constexpr void encode_impl_b64_ctx(A alphabet, rfc4648_ctx_impl &ctx, I begin, I end, O &first)
 {
     auto effective = ctx.effective; // 0, 1, 2
 
@@ -270,7 +274,7 @@ inline constexpr void copy_impl_b64_ctx(A alphabet, rfc4648_ctx &ctx, I begin, I
         buf[1] = ctx.buf[1];
         buf[2] = to_uc(*(begin++));
 
-        copy_impl_b64_3(alphabet, std::begin(buf), first);
+        encode_impl_b64_3(alphabet, std::begin(buf), first);
     }
     else if (effective != 0) // == 1
     {
@@ -292,7 +296,7 @@ inline constexpr void copy_impl_b64_ctx(A alphabet, rfc4648_ctx &ctx, I begin, I
             buf[1] = to_uc(*(begin++));
             buf[2] = to_uc(*(begin++));
 
-            copy_impl_b64_3(alphabet, std::begin(buf), first);
+            encode_impl_b64_3(alphabet, std::begin(buf), first);
         }
     }
 
@@ -301,11 +305,11 @@ inline constexpr void copy_impl_b64_ctx(A alphabet, rfc4648_ctx &ctx, I begin, I
     if constexpr (sizeof(std::size_t) == 8)
     {
         for (; end - begin > 5; begin += 6)
-            copy_impl_b64_6(alphabet, begin, first);
+            encode_impl_b64_6(alphabet, begin, first);
     }
 
     for (; end - begin > 3; begin += 3)
-        copy_impl_b64_3(alphabet, begin, first);
+        encode_impl_b64_3(alphabet, begin, first);
 
     if (end - begin == 2)
     {
@@ -325,7 +329,7 @@ inline constexpr void copy_impl_b64_ctx(A alphabet, rfc4648_ctx &ctx, I begin, I
 }
 
 template <bool Padding, typename A, typename O>
-inline constexpr void copy_impl_b64_ctx(A alphabet, rfc4648_ctx &ctx, O &first)
+inline constexpr void encode_impl_b64_ctx(A alphabet, rfc4648_ctx_impl &ctx, O &first)
 {
     auto effective = ctx.effective;
 
@@ -334,63 +338,63 @@ inline constexpr void copy_impl_b64_ctx(A alphabet, rfc4648_ctx &ctx, O &first)
         unsigned char buf[2];
         buf[0] = ctx.buf[0];
         buf[1] = ctx.buf[1];
-        detail::copy_impl_b64_2<Padding>(alphabet, std::begin(buf), first);
+        detail::encode_impl_b64_2<Padding>(alphabet, std::begin(buf), first);
     }
     else if (effective != 0) // == 1
     {
         unsigned char buf[1];
         buf[0] = ctx.buf[0];
-        detail::copy_impl_b64_1<Padding>(alphabet, std::begin(buf), first);
+        detail::encode_impl_b64_1<Padding>(alphabet, std::begin(buf), first);
     }
 
     // clear ctx
     ctx.effective = 0;
 }
 
-template <typename A, typename I, typename O> inline constexpr void copy_impl_b32_5(A alphabet, I begin, O &first)
+template <typename A, typename I, typename O> inline constexpr void encode_impl_b32_5(A alphabet, I begin, O &first)
 {
     auto data = chars_to_int_big_endian<5>(begin);
     static_assert(sizeof(data) == 8);
 
-    *(first++) = alphabet[(data >> 59) & 63];
-    *(first++) = alphabet[(data >> 54) & 63];
-    *(first++) = alphabet[(data >> 49) & 63];
-    *(first++) = alphabet[(data >> 44) & 63];
-    *(first++) = alphabet[(data >> 39) & 63];
-    *(first++) = alphabet[(data >> 34) & 63];
-    *(first++) = alphabet[(data >> 29) & 63];
-    *(first++) = alphabet[(data >> 24) & 63];
+    *(first++) = alphabet[(data >> 59) & 31];
+    *(first++) = alphabet[(data >> 54) & 31];
+    *(first++) = alphabet[(data >> 49) & 31];
+    *(first++) = alphabet[(data >> 44) & 31];
+    *(first++) = alphabet[(data >> 39) & 31];
+    *(first++) = alphabet[(data >> 34) & 31];
+    *(first++) = alphabet[(data >> 29) & 31];
+    *(first++) = alphabet[(data >> 24) & 31];
 }
 
 template <bool Padding, typename A, typename I, typename O>
-inline constexpr void copy_impl_b32_4(A alphabet, I begin, O &first)
+inline constexpr void encode_impl_b32_4(A alphabet, I begin, O &first)
 {
     auto data = chars_to_int_big_endian<4>(begin);
-    static_assert(sizeof(data) == 8);
+    static_assert(sizeof(data) == 4);
 
-    *(first++) = alphabet[(data >> 59) & 63];
-    *(first++) = alphabet[(data >> 54) & 63];
-    *(first++) = alphabet[(data >> 49) & 63];
-    *(first++) = alphabet[(data >> 44) & 63];
-    *(first++) = alphabet[(data >> 39) & 63];
-    *(first++) = alphabet[(data >> 34) & 63];
-    *(first++) = alphabet[(data >> 29) & 63];
+    *(first++) = alphabet[(data >> 27) & 31];
+    *(first++) = alphabet[(data >> 22) & 31];
+    *(first++) = alphabet[(data >> 17) & 31];
+    *(first++) = alphabet[(data >> 12) & 31];
+    *(first++) = alphabet[(data >> 7) & 31];
+    *(first++) = alphabet[(data >> 2) & 31];
+    *(first++) = alphabet[(data << 3) & 31];
 
     if constexpr (Padding)
         *(first++) = alphabet[32];
 }
 
 template <bool Padding, typename A, typename I, typename O>
-inline constexpr void copy_impl_b32_3(A alphabet, I begin, O &first)
+inline constexpr void encode_impl_b32_3(A alphabet, I begin, O &first)
 {
     auto data = chars_to_int_big_endian<3>(begin);
-    static_assert(sizeof(data) == 8);
+    static_assert(sizeof(data) == 4);
 
-    *(first++) = alphabet[(data >> 59) & 63];
-    *(first++) = alphabet[(data >> 54) & 63];
-    *(first++) = alphabet[(data >> 49) & 63];
-    *(first++) = alphabet[(data >> 44) & 63];
-    *(first++) = alphabet[(data >> 39) & 63];
+    *(first++) = alphabet[(data >> 27) & 31];
+    *(first++) = alphabet[(data >> 22) & 31];
+    *(first++) = alphabet[(data >> 17) & 31];
+    *(first++) = alphabet[(data >> 12) & 31];
+    *(first++) = alphabet[(data >> 7) & 31];
 
     if constexpr (Padding)
     {
@@ -401,18 +405,18 @@ inline constexpr void copy_impl_b32_3(A alphabet, I begin, O &first)
 }
 
 template <bool Padding, typename A, typename I, typename O>
-inline constexpr void copy_impl_b32_2(A alphabet, I begin, O &first)
+inline constexpr void encode_impl_b32_2(A alphabet, I begin, O &first)
 {
     auto data = chars_to_int_big_endian<2>(begin);
-    static_assert(sizeof(data) == 8);
+    static_assert(sizeof(data) == 4);
 
-    *(first++) = alphabet[(data >> 59) & 63];
-    *(first++) = alphabet[(data >> 54) & 63];
-    *(first++) = alphabet[(data >> 49) & 63];
+    *(first++) = alphabet[(data >> 27) & 31];
+    *(first++) = alphabet[(data >> 22) & 31];
+    *(first++) = alphabet[(data >> 17) & 31];
+    *(first++) = alphabet[(data >> 12) & 31];
 
     if constexpr (Padding)
     {
-        *(first++) = alphabet[32];
         *(first++) = alphabet[32];
         *(first++) = alphabet[32];
         *(first++) = alphabet[32];
@@ -421,11 +425,8 @@ inline constexpr void copy_impl_b32_2(A alphabet, I begin, O &first)
 }
 
 template <bool Padding, typename A, typename I, typename O>
-inline constexpr void copy_impl_b32_1(A alphabet, I begin, O &first)
+inline constexpr void encode_impl_b32_1(A alphabet, I begin, O &first)
 {
-    auto data = chars_to_int_big_endian<2>(begin);
-    static_assert(sizeof(data) == 8);
-
     auto a = to_uc(*(begin));
 
     *(first++) = alphabet[a >> 3];
@@ -443,91 +444,193 @@ inline constexpr void copy_impl_b32_1(A alphabet, I begin, O &first)
 }
 
 template <bool Padding = true, typename A, typename I, typename O>
-inline constexpr void copy_impl_b32(A alphabet, I begin, I end, O &first)
+inline constexpr void encode_impl_b32(A alphabet, I begin, I end, O &first)
 {
     for (; end - begin > 4; begin += 5)
-        copy_impl_b32_5(alphabet, begin, first);
+        encode_impl_b32_5(alphabet, begin, first);
 
     if (end - begin == 4)
-        copy_impl_b32_4<Padding>(alphabet, begin, first);
-    if (end - begin == 3)
-        copy_impl_b32_3<Padding>(alphabet, begin, first);
-    if (end - begin == 2)
-        copy_impl_b32_2<Padding>(alphabet, begin, first);
-    if (end - begin != 0) // == 1
-        copy_impl_b32_1<Padding>(alphabet, begin, first);
+        encode_impl_b32_4<Padding>(alphabet, begin, first);
+    else if (end - begin == 3)
+        encode_impl_b32_3<Padding>(alphabet, begin, first);
+    else if (end - begin == 2)
+        encode_impl_b32_2<Padding>(alphabet, begin, first);
+    else if (end - begin != 0) // == 1
+        encode_impl_b32_1<Padding>(alphabet, begin, first);
+}
+
+template <typename A, typename I, typename O>
+inline constexpr void encode_impl_b32_ctx(A alphabet, rfc4648_ctx_impl &ctx, I begin, I end, O &first)
+{
+    auto effective = ctx.effective;
+
+#if __has_cpp_attribute(assume)
+    [[assume(effective < 5)]];
+    [[assume(end - begin >= 0)]];
+#endif
+
+    if (end - begin + effective < 5)
+    {
+        for (; begin != end; ++begin)
+            ctx.buf[ctx.effective++] = to_uc(*begin);
+
+        return;
+    }
+
+    if (effective)
+    {
+        unsigned char buf[5];
+
+        std::copy(std::begin(ctx.buf), std::begin(ctx.buf) + effective, std::begin(buf));
+        std::copy(begin, begin + (5 - effective), std::begin(buf) + effective);
+        begin += (5 - effective);
+
+        encode_impl_b32_5(alphabet, std::begin(buf), first);
+    }
+
+    for (; end - begin > 4; begin += 5)
+        encode_impl_b32_5(alphabet, begin, first);
+
+    ctx.effective = static_cast<unsigned char>(end - begin);
+
+    for (std::size_t i{}; i < ctx.effective; ++i)
+        ctx.buf[i] = to_uc(*(begin++));
+}
+
+template <bool Padding, typename A, typename O>
+inline constexpr void encode_impl_b32_ctx(A alphabet, rfc4648_ctx_impl &ctx, O &first)
+{
+    auto effective = ctx.effective;
+
+    if (effective == 1)
+        encode_impl_b32_1<Padding>(alphabet, std::begin(ctx.buf), first);
+    else if (effective == 2)
+        encode_impl_b32_2<Padding>(alphabet, std::begin(ctx.buf), first);
+    else if (effective == 3)
+        encode_impl_b32_3<Padding>(alphabet, std::begin(ctx.buf), first);
+    else if (effective == 4)
+        encode_impl_b32_4<Padding>(alphabet, std::begin(ctx.buf), first);
+
+    ctx.effective = 0;
+}
+
+template <typename A, typename I, typename O>
+inline constexpr void encode_impl_b16(A alphabet, I begin, I end, O &first)
+{
+    if constexpr (sizeof(size_t) == 8)
+    {
+        for (; end - begin > 7; begin += 8)
+        {
+            auto data = chars_to_int_big_endian<8>(begin);
+
+            for (std::size_t i{}; i < 16; ++i)
+                *(first++) = alphabet[(data >> (64 - (i + 1) * 4)) & 15];
+        }
+    }
+    else /* == 4 */
+    {
+        for (; end - begin > 3; begin += 4)
+        {
+            auto data = chars_to_int_big_endian<4>(begin);
+
+            for (std::size_t i{}; i < 8; ++i)
+                *(first++) = alphabet[(data >> (32 - (i + 1) * 4)) & 15];
+        }
+    }
+
+    for (; begin != end; ++begin)
+    {
+        auto data = to_uc(*begin);
+
+        *(first++) = alphabet[data >> 4];
+        *(first++) = alphabet[data & 15];
+    }
 }
 } // namespace detail
 
+class rfc4648_ctx
+{
+    detail::rfc4648_ctx_impl ctx_impl;
+
+    template <rfc4648_kind Kind, typename In, typename Out>
+    friend inline constexpr Out rfc4648_encode(rfc4648_ctx &ctx, In begin, In end, Out first);
+
+    template <rfc4648_kind Kind, typename R, typename Out>
+    friend inline constexpr Out rfc4648_encode(rfc4648_ctx &ctx, R &&r, Out first);
+
+    template <rfc4648_kind Kind, bool Padding, typename Out>
+    friend inline constexpr Out rfc4648_encode(rfc4648_ctx &ctx, Out first);
+};
+
 template <rfc4648_kind Kind = rfc4648_kind::base64, bool Padding = true, typename In, typename Out>
-inline constexpr Out rfc4648_copy(In begin, In end, Out first)
+inline constexpr Out rfc4648_encode(In begin, In end, Out first)
 {
     static_assert(std::contiguous_iterator<In>);
     using in_char = std::remove_cvref_t<decltype(*begin)>;
     static_assert(std::is_same_v<in_char, char> || std::is_same_v<in_char, unsigned char> ||
                   std::is_same_v<in_char, std::byte>);
     using out_char = std::remove_cvref_t<decltype(*first)>;
-    using traits = rfc4648_traits<out_char>;
+    using traits = detail::rfc4648_traits<out_char>;
     auto begin_ptr = std::to_address(begin);
     auto end_ptr = std::to_address(end);
 
     if constexpr (detail::get_family<Kind>() == rfc4648_kind::base64)
-        detail::copy_impl_b64<Padding>(detail::get_alphabet<rfc4648_kind::base64, traits>(), begin_ptr, end_ptr, first);
+        detail::encode_impl_b64<Padding>(detail::get_alphabet<Kind, traits>(), begin_ptr, end_ptr, first);
     if constexpr (detail::get_family<Kind>() == rfc4648_kind::base32)
-        detail::copy_impl_b32<Padding>(detail::get_alphabet<rfc4648_kind::base32, traits>(), begin_ptr, end_ptr, first);
+        detail::encode_impl_b32<Padding>(detail::get_alphabet<Kind, traits>(), begin_ptr, end_ptr, first);
     if constexpr (detail::get_family<Kind>() == rfc4648_kind::base16)
-        static_assert(Kind != rfc4648_kind::base64, "Not yet implement!");
+        detail::encode_impl_b16(detail::get_alphabet<Kind, traits>(), begin_ptr, end_ptr, first);
 
     return first;
 }
 
 template <rfc4648_kind Kind = rfc4648_kind::base64, bool Padding = true, typename R, typename Out>
-inline constexpr Out rfc4648_copy(R &&r, Out first)
+inline constexpr Out rfc4648_encode(R &&r, Out first)
 {
-    return rfc4648_copy<Kind, Padding>(r.begin(), r.end(), first);
+    return rfc4648_encode<Kind, Padding>(r.begin(), r.end(), first);
 }
 
 // NB: don't need padding
 template <rfc4648_kind Kind = rfc4648_kind::base64, typename In, typename Out>
-inline constexpr Out rfc4648_copy(rfc4648_ctx &ctx, In begin, In end, Out first)
+inline constexpr Out rfc4648_encode(rfc4648_ctx &ctx, In begin, In end, Out first)
 {
     static_assert(std::contiguous_iterator<In>);
     using in_char = std::remove_cvref_t<decltype(*begin)>;
     static_assert(std::is_same_v<in_char, char> || std::is_same_v<in_char, unsigned char> ||
                   std::is_same_v<in_char, std::byte>);
     using out_char = std::remove_cvref_t<decltype(*first)>;
-    using traits = rfc4648_traits<out_char>;
+    using traits = detail::rfc4648_traits<out_char>;
     auto begin_ptr = std::to_address(begin);
     auto end_ptr = std::to_address(end);
 
     if constexpr (detail::get_family<Kind>() == rfc4648_kind::base64)
-        detail::copy_impl_b64_ctx(detail::get_alphabet<rfc4648_kind::base64, traits>(), ctx, begin_ptr, end_ptr, first);
+        detail::encode_impl_b64_ctx(detail::get_alphabet<Kind, traits>(), ctx.ctx_impl, begin_ptr, end_ptr, first);
     if constexpr (detail::get_family<Kind>() == rfc4648_kind::base32)
-        static_assert(Kind != rfc4648_kind::base64, "Not yet implement!");
+        detail::encode_impl_b32_ctx(detail::get_alphabet<Kind, traits>(), ctx.ctx_impl, begin_ptr, end_ptr, first);
     if constexpr (detail::get_family<Kind>() == rfc4648_kind::base16)
-        static_assert(Kind != rfc4648_kind::base64, "Not yet implement!");
+        detail::encode_impl_b16(detail::get_alphabet<Kind, traits>(), begin_ptr, end_ptr, first);
 
     return first;
 }
 
 template <rfc4648_kind Kind = rfc4648_kind::base64, typename R, typename Out>
-inline constexpr Out rfc4648_copy(rfc4648_ctx &ctx, R &&r, Out first)
+inline constexpr Out rfc4648_encode(rfc4648_ctx &ctx, R &&r, Out first)
 {
-    return rfc4648_copy<Kind>(ctx, r.begin(), r.end(), first);
+    return rfc4648_encode<Kind>(ctx.ctx_impl, r.begin(), r.end(), first);
 }
 
 template <rfc4648_kind Kind = rfc4648_kind::base64, bool Padding = true, typename Out>
-inline constexpr Out rfc4648_copy(rfc4648_ctx &ctx, Out first)
+inline constexpr Out rfc4648_encode(rfc4648_ctx &ctx, Out first)
 {
     using out_char = std::remove_cvref_t<decltype(*first)>;
-    using traits = rfc4648_traits<out_char>;
+    using traits = detail::rfc4648_traits<out_char>;
 
     if constexpr (detail::get_family<Kind>() == rfc4648_kind::base64)
-        detail::copy_impl_b64_ctx<Padding>(detail::get_alphabet<rfc4648_kind::base64, traits>(), ctx, first);
+        detail::encode_impl_b64_ctx<Padding>(detail::get_alphabet<Kind, traits>(), ctx.ctx_impl, first);
     if constexpr (detail::get_family<Kind>() == rfc4648_kind::base32)
-        static_assert(Kind != rfc4648_kind::base64, "Not yet implement!");
+        detail::encode_impl_b32_ctx<Padding>(detail::get_alphabet<Kind, traits>(), ctx.ctx_impl, first);
     if constexpr (detail::get_family<Kind>() == rfc4648_kind::base16)
-        static_assert(Kind != rfc4648_kind::base64, "Not yet implement!");
+        /*no effect when CHAR_BIT is 8*/;
 
     return first;
 }

@@ -14,7 +14,7 @@ C++23 required (`consteval`, concepts, endian and byteswap).
 
 ## Status
 
-base64/url encode done.
+encode done.
 
 ## Synopsis
 
@@ -38,15 +38,15 @@ enum class rfc4648_kind
 struct rfc4648_ctx;
 // All overloads are constexpr
 template <rfc4648_kind Kind = rfc4648_kind::base64, bool Padding = true, typename In, typename Out>
-Out rfc4648_copy(In begin, In end, Out first);
+Out rfc4648_encode(In begin, In end, Out first);
 template <rfc4648_kind Kind = rfc4648_kind::base64, bool Padding = true, typename R, typename Out>
-Out rfc4648_copy(R&& r, Out first);
+Out rfc4648_encode(R&& r, Out first);
 template <rfc4648_kind Kind = rfc4648_kind::base64, typename In, typename Out>
-Out rfc4648_copy(rfc4648_ctx& ctx, In begin, In end, Out first);
+Out rfc4648_encode(rfc4648_ctx& ctx, In begin, In end, Out first);
 template <rfc4648_kind Kind = rfc4648_kind::base64, typename R, typename Out>
-Out rfc4648_copy(rfc4648_ctx& ctx, R&& r, Out first);
+Out rfc4648_encode(rfc4648_ctx& ctx, R&& r, Out first);
 template <rfc4648_kind Kind = rfc4648_kind::base64, bool Padding = true, typename Out>
-Out rfc4648_copy(rfc4648_ctx& ctx, Out first);
+Out rfc4648_encode(rfc4648_ctx& ctx, Out first);
 
 ```
 
@@ -70,28 +70,28 @@ int main()
     // single input buffer
     std::string dest;
     dest.resize((src.size() + 3) / 3 * 4);
-    bizwen::rfc4648_copy(src.begin(), src.end(), dest.begin());
+    bizwen::rfc4648_encode(src.begin(), src.end(), dest.begin());
 
     // discontinuous multiple buffers
     std::string dest1;
     dest1.resize((src.size() * 3 + 3) / 3 * 4);
     // init context
     bizwen::rfc4648_ctx ctx;
-    // init copy
-    auto it = bizwen::rfc4648_copy(ctx, src.begin(), src.end(), dest1.begin());
-    it = rfc4648_copy(ctx, src.begin(), src.end(), it);
-    it = rfc4648_copy(ctx, src.begin(), src.end(), it);
+    // init encode
+    auto it = bizwen::rfc4648_encode(ctx, src.begin(), src.end(), dest1.begin());
+    it = rfc4648_encode(ctx, src.begin(), src.end(), it);
+    it = rfc4648_encode(ctx, src.begin(), src.end(), it);
     // final
-    it = rfc4648_copy(ctx, it);
+    it = rfc4648_encode(ctx, it);
 
     // ranges
     std::string dest2;
     dest2.resize((src.size() + 3) / 3 * 4);
-    bizwen::rfc4648_copy(src, dest2.begin());
+    bizwen::rfc4648_encode(src, dest2.begin());
 
     // byte array and wstring
     std::wstring dest3;
 	dest3.resize((src.size() + 3) / 3 * 4);
-	bizwen::rfc4648_copy((std::byte*)src.data(), (std::byte*)src.data() + src.size(), dest3.begin());
+	bizwen::rfc4648_encode((std::byte*)src.data(), (std::byte*)src.data() + src.size(), dest3.begin());
 }
 ```
