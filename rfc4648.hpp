@@ -1,3 +1,5 @@
+#pragma once
+
 #include <array>
 #include <bit>
 #include <climits>
@@ -164,8 +166,8 @@ template <std::size_t Count, typename T> inline constexpr auto chars_to_int_big_
     {
         std::array<unsigned char, size> buf{};
 
-        for (std::size_t i{}; i < Count; ++i)
-            buf[i] = to_uc(*(begin++));
+        for (std::size_t i{}; i < Count; ++i, ++begin)
+            buf[i] = to_uc(*begin);
 
         if constexpr (std::endian::native == std::endian::little)
             return std::byteswap(std::bit_cast<data_type>(buf));
@@ -462,8 +464,8 @@ inline constexpr void encode_impl_b32_ctx(A alphabet, rfc4648_ctx_impl &ctx, I b
 
     if (end - begin + effective < 5)
     {
-        for (; begin != end; ++begin)
-            ctx.buf[ctx.effective++] = to_uc(*begin);
+        for (; begin != end; ++begin, ++ctx.effective)
+            ctx.buf[ctx.effective] = to_uc(*begin);
 
         return;
     }
@@ -482,10 +484,12 @@ inline constexpr void encode_impl_b32_ctx(A alphabet, rfc4648_ctx_impl &ctx, I b
     for (; end - begin > 4; begin += 5)
         encode_impl_b32_5(alphabet, begin, first);
 
-    ctx.effective = static_cast<unsigned char>(end - begin);
+    effective = static_cast<unsigned char>(end - begin);
 
-    for (std::size_t i{}; i < ctx.effective; ++i)
-        ctx.buf[i] = to_uc(*(begin++));
+    for (std::size_t i{}; i < effective; ++i, ++begin)
+        ctx.buf[i] = to_uc(*begin);
+
+    ctx.effective = effective;
 }
 
 template <bool Padding, typename A, typename O>
