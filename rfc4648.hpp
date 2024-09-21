@@ -146,19 +146,20 @@ template <rfc4648_kind Kind> inline consteval auto get_family()
 
 template <std::size_t Count, typename T> inline constexpr auto chars_to_int_big_endian(T begin)
 {
+    constexpr auto size = Count <= 4 ? 4 : 8;
+
+    using int32_type = std::conditional_t<sizeof(int) == 4, unsigned int, unsigned long>;
+    using data_type = std::conditional_t<size == 4, int32_type, unsigned long long>;
+
     static_assert(Count < 9);
     static_assert(CHAR_BIT == 8);
     static_assert(std::endian::native == std::endian::big || std::endian::native == std::endian::little);
-    using int32_type = std::conditional_t<sizeof(int) == 4, unsigned int, unsigned long>;
     static_assert(sizeof(int32_type) == 4);
-    constexpr auto size = Count <= 4 ? 4 : 8;
-    using data_type = std::conditional_t<size == 4, int32_type, unsigned long long>;
 
-    if
 #if defined(__cpp_if_consteval) && (__cpp_if_consteval >= 202106L)
-        consteval
+    if consteval
 #else
-        (::std::is_constant_evaluated())
+    if (::std::is_constant_evaluated())
 #endif
     {
         std::array<unsigned char, size> buf{};
@@ -187,7 +188,6 @@ template <std::size_t Count, typename T> inline constexpr auto chars_to_int_big_
 template <typename A, typename I, typename O> inline constexpr void encode_impl_b64_6(A alphabet, I begin, O &first)
 {
     auto data = chars_to_int_big_endian<6>(begin);
-    static_assert(sizeof(data) == 8);
 
     *(first++) = alphabet[(data >> 58) & 63];
     *(first++) = alphabet[(data >> 52) & 63];
@@ -202,7 +202,6 @@ template <typename A, typename I, typename O> inline constexpr void encode_impl_
 template <typename A, typename I, typename O> inline constexpr void encode_impl_b64_3(A alphabet, I begin, O &first)
 {
     auto data = chars_to_int_big_endian<3>(begin);
-    static_assert(sizeof(data) == 4);
 
     *(first++) = alphabet[(data >> 26) & 63];
     *(first++) = alphabet[(data >> 20) & 63];
@@ -214,7 +213,6 @@ template <bool Padding, typename A, typename I, typename O>
 inline constexpr void encode_impl_b64_2(A alphabet, I begin, O &first)
 {
     auto data = chars_to_int_big_endian<2>(begin);
-    static_assert(sizeof(data) == 4);
 
     *(first++) = alphabet[(data >> 26) & 63];
     *(first++) = alphabet[(data >> 20) & 63];
@@ -257,6 +255,8 @@ inline constexpr void encode_impl_b64(A alphabet, I begin, I end, O &first)
         encode_impl_b64_2<Padding>(alphabet, begin, first);
     else if (end - begin != 0) // == 1
         encode_impl_b64_1<Padding>(alphabet, begin, first);
+
+    /* == 0  fallthrough */
 }
 
 template <typename A, typename I, typename O>
@@ -334,18 +334,11 @@ inline constexpr void encode_impl_b64_ctx(A alphabet, rfc4648_ctx_impl &ctx, O &
     auto effective = ctx.effective;
 
     if (effective == 2)
-    {
-        unsigned char buf[2];
-        buf[0] = ctx.buf[0];
-        buf[1] = ctx.buf[1];
-        detail::encode_impl_b64_2<Padding>(alphabet, std::begin(buf), first);
-    }
+        detail::encode_impl_b64_2<Padding>(alphabet, std::begin(ctx.buf), first);
     else if (effective != 0) // == 1
-    {
-        unsigned char buf[1];
-        buf[0] = ctx.buf[0];
-        detail::encode_impl_b64_1<Padding>(alphabet, std::begin(buf), first);
-    }
+        detail::encode_impl_b64_1<Padding>(alphabet, std::begin(ctx.buf), first);
+
+    /* == 0  fallthrough */
 
     // clear ctx
     ctx.effective = 0;
@@ -354,7 +347,6 @@ inline constexpr void encode_impl_b64_ctx(A alphabet, rfc4648_ctx_impl &ctx, O &
 template <typename A, typename I, typename O> inline constexpr void encode_impl_b32_5(A alphabet, I begin, O &first)
 {
     auto data = chars_to_int_big_endian<5>(begin);
-    static_assert(sizeof(data) == 8);
 
     *(first++) = alphabet[(data >> 59) & 31];
     *(first++) = alphabet[(data >> 54) & 31];
@@ -370,7 +362,6 @@ template <bool Padding, typename A, typename I, typename O>
 inline constexpr void encode_impl_b32_4(A alphabet, I begin, O &first)
 {
     auto data = chars_to_int_big_endian<4>(begin);
-    static_assert(sizeof(data) == 4);
 
     *(first++) = alphabet[(data >> 27) & 31];
     *(first++) = alphabet[(data >> 22) & 31];
@@ -378,6 +369,7 @@ inline constexpr void encode_impl_b32_4(A alphabet, I begin, O &first)
     *(first++) = alphabet[(data >> 12) & 31];
     *(first++) = alphabet[(data >> 7) & 31];
     *(first++) = alphabet[(data >> 2) & 31];
+    // NB: left shift
     *(first++) = alphabet[(data << 3) & 31];
 
     if constexpr (Padding)
@@ -388,7 +380,6 @@ template <bool Padding, typename A, typename I, typename O>
 inline constexpr void encode_impl_b32_3(A alphabet, I begin, O &first)
 {
     auto data = chars_to_int_big_endian<3>(begin);
-    static_assert(sizeof(data) == 4);
 
     *(first++) = alphabet[(data >> 27) & 31];
     *(first++) = alphabet[(data >> 22) & 31];
@@ -408,7 +399,6 @@ template <bool Padding, typename A, typename I, typename O>
 inline constexpr void encode_impl_b32_2(A alphabet, I begin, O &first)
 {
     auto data = chars_to_int_big_endian<2>(begin);
-    static_assert(sizeof(data) == 4);
 
     *(first++) = alphabet[(data >> 27) & 31];
     *(first++) = alphabet[(data >> 22) & 31];
@@ -457,6 +447,7 @@ inline constexpr void encode_impl_b32(A alphabet, I begin, I end, O &first)
         encode_impl_b32_2<Padding>(alphabet, begin, first);
     else if (end - begin != 0) // == 1
         encode_impl_b32_1<Padding>(alphabet, begin, first);
+    /* == 0  fallthrough */
 }
 
 template <typename A, typename I, typename O>
@@ -565,12 +556,14 @@ class rfc4648_ctx
 template <rfc4648_kind Kind = rfc4648_kind::base64, bool Padding = true, typename In, typename Out>
 inline constexpr Out rfc4648_encode(In begin, In end, Out first)
 {
-    static_assert(std::contiguous_iterator<In>);
     using in_char = std::remove_cvref_t<decltype(*begin)>;
-    static_assert(std::is_same_v<in_char, char> || std::is_same_v<in_char, unsigned char> ||
-                  std::is_same_v<in_char, std::byte>);
     using out_char = std::remove_cvref_t<decltype(*first)>;
     using traits = detail::rfc4648_traits<out_char>;
+
+    static_assert(std::contiguous_iterator<In>);
+    static_assert(std::is_same_v<in_char, char> || std::is_same_v<in_char, unsigned char> ||
+                  std::is_same_v<in_char, std::byte>);
+
     auto begin_ptr = std::to_address(begin);
     auto end_ptr = std::to_address(end);
 
@@ -594,12 +587,14 @@ inline constexpr Out rfc4648_encode(R &&r, Out first)
 template <rfc4648_kind Kind = rfc4648_kind::base64, typename In, typename Out>
 inline constexpr Out rfc4648_encode(rfc4648_ctx &ctx, In begin, In end, Out first)
 {
-    static_assert(std::contiguous_iterator<In>);
     using in_char = std::remove_cvref_t<decltype(*begin)>;
-    static_assert(std::is_same_v<in_char, char> || std::is_same_v<in_char, unsigned char> ||
-                  std::is_same_v<in_char, std::byte>);
     using out_char = std::remove_cvref_t<decltype(*first)>;
     using traits = detail::rfc4648_traits<out_char>;
+
+    static_assert(std::contiguous_iterator<In>);
+    static_assert(std::is_same_v<in_char, char> || std::is_same_v<in_char, unsigned char> ||
+                  std::is_same_v<in_char, std::byte>);
+
     auto begin_ptr = std::to_address(begin);
     auto end_ptr = std::to_address(end);
 

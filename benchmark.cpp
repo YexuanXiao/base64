@@ -1,7 +1,6 @@
 #include "rfc4648.hpp"
 #include <chrono>
 #include <iostream>
-#include <ratio>
 #include <string>
 #include <string_view>
 
@@ -33,18 +32,16 @@ int main()
     std::string dest;
     dest.resize((src.size() + 3) / 3 * 4);
 
-    {
-        auto pre = std::chrono::steady_clock::now();
-        for (std::size_t x{}; x < 100000; ++x)
-        {
-            auto it = bizwen::rfc4648_encode(src.begin(), src.end(), dest.begin());
-        }
-        auto now = std::chrono::steady_clock::now();
+    auto pre = std::chrono::steady_clock::now();
 
-        std::cout << "bizwen::rfc4648_encode: " << std::chrono::duration_cast<std::chrono::milliseconds>((now - pre))
-                  << '\n'
-                  << dest << '\n';
-    }
+    for (std::size_t x{}; x < 100000; ++x)
+        auto it = bizwen::rfc4648_encode(src.begin(), src.end(), dest.begin());
+
+    auto now = std::chrono::steady_clock::now();
+
+    std::cout << "bizwen::rfc4648_encode: " << std::chrono::duration_cast<std::chrono::milliseconds>((now - pre))
+              << '\n'
+              << dest << '\n';
 }
 
 /* simd base64 library:

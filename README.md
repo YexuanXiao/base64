@@ -91,7 +91,7 @@ int main()
 
     // byte array and wstring
     std::wstring dest3;
-	dest3.resize((src.size() + 3) / 3 * 4);
-	bizwen::rfc4648_encode((std::byte*)src.data(), (std::byte*)src.data() + src.size(), dest3.begin());
+    dest3.resize((src.size() + 3) / 3 * 4);
+    bizwen::rfc4648_encode((std::byte*)src.data(), (std::byte*)src.data() + src.size(), dest3.begin());
 }
 ```
