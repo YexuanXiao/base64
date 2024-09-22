@@ -1,6 +1,5 @@
 #pragma once
 
-#include <array>
 #include <bit>
 #include <climits>
 #include <concepts>
@@ -164,7 +163,7 @@ template <std::size_t Count, typename T> inline constexpr auto chars_to_int_big_
     if (::std::is_constant_evaluated())
 #endif
     {
-        std::array<unsigned char, size> buf{};
+        unsigned char buf[size]{};
 
         for (std::size_t i{}; i < Count; ++i, ++begin)
             buf[i] = to_uc(*begin);
