@@ -12,9 +12,9 @@ int main()
     dest1.resize((src.size() * 3 + 3) / 3 * 4);
     bizwen::rfc4648_ctx ctx;
     auto it = bizwen::rfc4648_encode(ctx, src.begin(), src.end(), dest1.begin());
-    it = rfc4648_encode(ctx, src.begin(), src.end(), it);
-    it = rfc4648_encode(ctx, src.begin(), src.end(), it);
-    rfc4648_encode(ctx, it);
+    it = bizwen::rfc4648_encode(ctx, src.begin(), src.end(), it);
+    it = bizwen::rfc4648_encode(ctx, src.begin(), src.end(), it);
+    bizwen::rfc4648_encode(ctx, it);
 
     std::string dest2;
     dest2.resize((src.size() + 3) / 3 * 4);

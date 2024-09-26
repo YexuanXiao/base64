@@ -35,7 +35,7 @@ enum class rfc4648_kind
     hex_lower = base16_lower
 };
 // All special member functions are trivial and has non-trivial but noexcept default constructor
-struct rfc4648_ctx;
+class rfc4648_ctx;
 // All overloads are constexpr
 template <rfc4648_kind Kind = rfc4648_kind::base64, bool Padding = true, typename In, typename Out>
 Out rfc4648_encode(In begin, In end, Out first);
@@ -47,7 +47,6 @@ template <rfc4648_kind Kind = rfc4648_kind::base64, typename R, typename Out>
 Out rfc4648_encode(rfc4648_ctx& ctx, R&& r, Out first);
 template <rfc4648_kind Kind = rfc4648_kind::base64, bool Padding = true, typename Out>
 Out rfc4648_encode(rfc4648_ctx& ctx, Out first);
-
 ```
 
 `R` must satisfy *ContinuousContainer* , `In` must satisfy *ContinuousIterator* and `Out` must statisfy *InputIterator* and *Output Iterator*.
@@ -79,8 +78,8 @@ int main()
     bizwen::rfc4648_ctx ctx;
     // init encode
     auto it = bizwen::rfc4648_encode(ctx, src.begin(), src.end(), dest1.begin());
-    it = rfc4648_encode(ctx, src.begin(), src.end(), it);
-    it = rfc4648_encode(ctx, src.begin(), src.end(), it);
+    it = bizwen::rfc4648_encode(ctx, src.begin(), src.end(), it);
+    it = bizwen::rfc4648_encode(ctx, src.begin(), src.end(), it);
     // final
     it = rfc4648_encode(ctx, it);
 
