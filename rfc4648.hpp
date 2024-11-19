@@ -58,32 +58,12 @@ template <> struct rfc4648_traits<char8_t>
     static inline constexpr auto base16_lower = base32_hex_lower;
 };
 
-template <> struct rfc4648_traits<char16_t>
+template <> struct rfc4648_traits<char16_t> : rfc4648_traits<char8_t>
 {
-    static inline constexpr auto base64 = u"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
-    static inline constexpr auto base64_url = u"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_=";
-    static inline constexpr auto base32 = u"ABCDEFGHIJKLMNOPQRSTUVWXYZ234567=";
-    static inline constexpr auto base32_lower = u"abcdefghijklmnopqrstuvwxyz234567=";
-    static inline constexpr auto base32_hex = u"0123456789ABCDEFGHIJKLMNOPQRSTUV=";
-    static inline constexpr auto base32_hex_lower = u"0123456789abcdefghijklmnopqrstuv=";
-    static inline constexpr auto base32_crockford = u"0123456789ABCDEFGHJKMNPQRSTVWXYZ=";
-    static inline constexpr auto base32_crockford_lower = u"0123456789abcdefghjkmnpqrstvwxyz=";
-    static inline constexpr auto base16 = base32_hex;
-    static inline constexpr auto base16_lower = base32_hex_lower;
 };
 
-template <> struct rfc4648_traits<char32_t>
+template <> struct rfc4648_traits<char32_t> : rfc4648_traits<char8_t>
 {
-    static inline constexpr auto base64 = U"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
-    static inline constexpr auto base64_url = U"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_=";
-    static inline constexpr auto base32 = U"ABCDEFGHIJKLMNOPQRSTUVWXYZ234567=";
-    static inline constexpr auto base32_lower = U"abcdefghijklmnopqrstuvwxyz234567=";
-    static inline constexpr auto base32_hex = U"0123456789ABCDEFGHIJKLMNOPQRSTUV=";
-    static inline constexpr auto base32_hex_lower = U"0123456789abcdefghijklmnopqrstuv=";
-    static inline constexpr auto base32_crockford = U"0123456789ABCDEFGHJKMNPQRSTVWXYZ=";
-    static inline constexpr auto base32_crockford_lower = U"0123456789abcdefghjkmnpqrstvwxyz=";
-    static inline constexpr auto base16 = base32_hex;
-    static inline constexpr auto base16_lower = base32_hex_lower;
 };
 
 enum class rfc4648_kind : unsigned char
@@ -145,17 +125,34 @@ template <rfc4648_kind Kind> inline consteval auto get_family()
         return rfc4648_kind::base32;
 }
 
+template <typename T> struct out_char_helper
+{
+    template <class U> typename std::add_rvalue_reference_t<U> static declval() noexcept;
+
+    static consteval auto helper()
+    {
+        if constexpr (requires { typename T::container_type; })
+            return declval<typename T::container_type::value_type>();
+        else
+            return declval<typename T::value_type>();
+    }
+
+    using value_type = std::remove_cvref_t<decltype(helper())>;
+    static_assert(std::output_iterator<T, value_type>);
+};
+
+template <typename T> using out_char_helper_t = out_char_helper<T>::value_type;
+
 template <std::size_t Count, typename T> inline constexpr auto chars_to_int_big_endian(T begin)
 {
+    static_assert(Count < 9);
+    static_assert(CHAR_BIT == 8);
+    static_assert(std::endian::native == std::endian::big || std::endian::native == std::endian::little);
+
     constexpr auto size = Count <= 4 ? 4 : 8;
 
     using int32_type = std::conditional_t<sizeof(int) == 4, unsigned int, unsigned long>;
     using data_type = std::conditional_t<size == 4, int32_type, unsigned long long>;
-
-    static_assert(Count < 9);
-    static_assert(CHAR_BIT == 8);
-    static_assert(std::endian::native == std::endian::big || std::endian::native == std::endian::little);
-    static_assert(sizeof(int32_type) == 4);
 
 #if defined(__cpp_if_consteval) && (__cpp_if_consteval >= 202106L)
     if consteval
@@ -553,7 +550,7 @@ struct rfc4648_encode_fn
 #endif
     {
         using in_char = std::remove_cvref_t<decltype(*begin)>;
-        using out_char = std::remove_cvref_t<decltype(*first)>;
+        using out_char = detail::out_char_helper_t<Out>;
         using traits = detail::rfc4648_traits<out_char>;
 
         static_assert(std::contiguous_iterator<In>);
@@ -598,7 +595,7 @@ struct rfc4648_encode_fn
 #endif
     {
         using in_char = std::remove_cvref_t<decltype(*begin)>;
-        using out_char = std::remove_cvref_t<decltype(*first)>;
+        using out_char = detail::out_char_helper_t<Out>;
         using traits = detail::rfc4648_traits<out_char>;
 
         static_assert(std::contiguous_iterator<In>);
@@ -636,7 +633,7 @@ struct rfc4648_encode_fn
     template <rfc4648_kind Kind = rfc4648_kind::base64, bool Padding = true, typename Out>
     inline constexpr Out operator()(rfc4648_ctx &ctx, Out first) const
     {
-        using out_char = std::remove_cvref_t<decltype(*first)>;
+        using out_char = detail::out_char_helper_t<Out>;
         using traits = detail::rfc4648_traits<out_char>;
 
         if constexpr (detail::get_family<Kind>() == rfc4648_kind::base64)

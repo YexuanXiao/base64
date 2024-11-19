@@ -1,6 +1,6 @@
 # base64
 
-A plain header-only [RFC 4648](https://www.rfc-editor.org/rfc/rfc4648) implementation, but with the most modern C++ API design.
+A plain header-only [RFC 4648](https://www.rfc-editor.org/rfc/rfc4648) encoding library, but with the most modern C++ API design.
 
 All variants of RFC 4648 are supported and the Crockford variant is available.
 
@@ -49,7 +49,7 @@ template <rfc4648_kind Kind = rfc4648_kind::base64, bool Padding = true, typenam
 Out rfc4648_encode(rfc4648_ctx& ctx, Out first);
 ```
 
-`R` must satisfy *ContinuousContainer* , `In` must satisfy *ContinuousIterator* and `Out` must statisfy *InputIterator* and *Output Iterator*.
+`R` must satisfy *ContinuousContainer* , `In` must satisfy *ContinuousIterator* and `Out` must satisfy *OutputIterator*.
 
 Let `n` is the length of the output as specified by RFC 4648.
 
