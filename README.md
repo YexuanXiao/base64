@@ -61,7 +61,7 @@ Throws any exceptions from incrementing `first`. After an exception is thrown, [
 
 ```cpp
 #include <string>
-#include "rfc4648.hpp"
+#include "encode.hpp"
 int main()
 {
     std::string src{ "ABCDEFGHIJKLMN" };
