@@ -10,39 +10,25 @@
 #include <ranges>
 #include <type_traits>
 
+#include "./common.hpp"
+
 namespace bizwen
 {
 namespace encode_impl
 {
 namespace pattern
 {
-    static inline constexpr auto base64 = u8"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
-    static inline constexpr auto base64_url = u8"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_=";
-    static inline constexpr auto base32 = u8"ABCDEFGHIJKLMNOPQRSTUVWXYZ234567=";
-    static inline constexpr auto base32_lower = u8"abcdefghijklmnopqrstuvwxyz234567=";
-    static inline constexpr auto base32_hex = u8"0123456789ABCDEFGHIJKLMNOPQRSTUV=";
-    static inline constexpr auto base32_hex_lower = u8"0123456789abcdefghijklmnopqrstuv=";
-    static inline constexpr auto base32_crockford = u8"0123456789ABCDEFGHJKMNPQRSTVWXYZ=";
-    static inline constexpr auto base32_crockford_lower = u8"0123456789abcdefghjkmnpqrstvwxyz=";
-    static inline constexpr auto base16 = base32_hex;
-    static inline constexpr auto base16_lower = base32_hex_lower;
-};
-
-enum class rfc4648_kind : unsigned char
-{
-    base64,
-    base64_url,
-    base32,
-    base32_lower,
-    base32_hex,
-    base32_hex_lower,
-    base32_crockford,
-    base32_crockford_lower,
-    base16,
-    base16_lower,
-    hex = base16,
-    hex_lower = base16_lower
-};
+static inline constexpr auto base64 = u8"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
+static inline constexpr auto base64_url = u8"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_=";
+static inline constexpr auto base32 = u8"ABCDEFGHIJKLMNOPQRSTUVWXYZ234567=";
+static inline constexpr auto base32_lower = u8"abcdefghijklmnopqrstuvwxyz234567=";
+static inline constexpr auto base32_hex = u8"0123456789ABCDEFGHIJKLMNOPQRSTUV=";
+static inline constexpr auto base32_hex_lower = u8"0123456789abcdefghijklmnopqrstuv=";
+static inline constexpr auto base32_crockford = u8"0123456789ABCDEFGHJKMNPQRSTVWXYZ=";
+static inline constexpr auto base32_crockford_lower = u8"0123456789abcdefghjkmnpqrstvwxyz=";
+static inline constexpr auto base16 = base32_hex;
+static inline constexpr auto base16_lower = base32_hex_lower;
+}; // namespace pattern
 
 using buf_reference = unsigned char (&)[4];
 using sig_reference = unsigned char &;
@@ -75,16 +61,6 @@ template <rfc4648_kind Kind> inline consteval auto get_alphabet() noexcept
         return pattern::base16;
     if constexpr (Kind == rfc4648_kind::base16_lower)
         return pattern::base16_lower;
-}
-
-template <rfc4648_kind Kind> inline consteval auto get_family()
-{
-    if constexpr (Kind == rfc4648_kind::base64 || Kind == rfc4648_kind::base64_url)
-        return rfc4648_kind::base64;
-    if constexpr (Kind == rfc4648_kind::base16 || Kind == rfc4648_kind::base16_lower)
-        return rfc4648_kind::base16;
-    else
-        return rfc4648_kind::base32;
 }
 
 template <std::size_t Count, typename T> inline constexpr auto chars_to_int_big_endian(T begin)
@@ -493,20 +469,20 @@ struct rfc4648_encode_fn
             const
 #endif
     {
-        using in_char = std::remove_cvref_t<decltype(*begin)>;
+        using in_char = std::iterator_traits<In>::value_type;
 
         static_assert(std::contiguous_iterator<In>);
         static_assert(std::is_same_v<in_char, char> || std::is_same_v<in_char, unsigned char> ||
                       std::is_same_v<in_char, std::byte>);
 
-        auto begin_ptr = std::to_address(begin);
-        auto end_ptr = std::to_address(end);
+        auto begin_ptr = detail::to_address_const(begin);
+        auto end_ptr = detail::to_address_const(end);
 
-        if constexpr (encode_impl::get_family<Kind>() == rfc4648_kind::base64)
+        if constexpr (detail::get_family<Kind>() == rfc4648_kind::base64)
             encode_impl::encode_impl_b64<Padding>(encode_impl::get_alphabet<Kind>(), begin_ptr, end_ptr, first);
-        if constexpr (encode_impl::get_family<Kind>() == rfc4648_kind::base32)
+        if constexpr (detail::get_family<Kind>() == rfc4648_kind::base32)
             encode_impl::encode_impl_b32<Padding>(encode_impl::get_alphabet<Kind>(), begin_ptr, end_ptr, first);
-        if constexpr (encode_impl::get_family<Kind>() == rfc4648_kind::base16)
+        if constexpr (detail::get_family<Kind>() == rfc4648_kind::base16)
             encode_impl::encode_impl_b16(encode_impl::get_alphabet<Kind>(), begin_ptr, end_ptr, first);
 
         return first;
@@ -536,22 +512,22 @@ struct rfc4648_encode_fn
             const
 #endif
     {
-        using in_char = std::remove_cvref_t<decltype(*begin)>;
+        using in_char = std::iterator_traits<In>::value_type;
 
         static_assert(std::contiguous_iterator<In>);
         static_assert(std::is_same_v<in_char, char> || std::is_same_v<in_char, unsigned char> ||
                       std::is_same_v<in_char, std::byte>);
 
-        auto begin_ptr = std::to_address(begin);
-        auto end_ptr = std::to_address(end);
+        auto begin_ptr = detail::to_address_const(begin);
+        auto end_ptr = detail::to_address_const(end);
 
-        if constexpr (encode_impl::get_family<Kind>() == rfc4648_kind::base64)
-            encode_impl::encode_impl_b64_ctx(encode_impl::get_alphabet<Kind>(), ctx.buf_, ctx.sig_, begin_ptr,
-                                             end_ptr, first);
-        if constexpr (encode_impl::get_family<Kind>() == rfc4648_kind::base32)
-            encode_impl::encode_impl_b32_ctx(encode_impl::get_alphabet<Kind>(), ctx.buf_, ctx.sig_, begin_ptr,
-                                             end_ptr, first);
-        if constexpr (encode_impl::get_family<Kind>() == rfc4648_kind::base16)
+        if constexpr (detail::get_family<Kind>() == rfc4648_kind::base64)
+            encode_impl::encode_impl_b64_ctx(encode_impl::get_alphabet<Kind>(), ctx.buf_, ctx.sig_, begin_ptr, end_ptr,
+                                             first);
+        if constexpr (detail::get_family<Kind>() == rfc4648_kind::base32)
+            encode_impl::encode_impl_b32_ctx(encode_impl::get_alphabet<Kind>(), ctx.buf_, ctx.sig_, begin_ptr, end_ptr,
+                                             first);
+        if constexpr (detail::get_family<Kind>() == rfc4648_kind::base16)
             encode_impl::encode_impl_b16(encode_impl::get_alphabet<Kind>(), begin_ptr, end_ptr, first);
 
         return first;
@@ -573,13 +549,11 @@ struct rfc4648_encode_fn
     template <rfc4648_kind Kind = rfc4648_kind::base64, bool Padding = true, typename Out>
     inline constexpr Out operator()(rfc4648_ctx &ctx, Out first) const
     {
-        if constexpr (encode_impl::get_family<Kind>() == rfc4648_kind::base64)
-            encode_impl::encode_impl_b64_ctx<Padding>(encode_impl::get_alphabet<Kind>(), ctx.buf_, ctx.sig_,
-                                                      first);
-        if constexpr (encode_impl::get_family<Kind>() == rfc4648_kind::base32)
-            encode_impl::encode_impl_b32_ctx<Padding>(encode_impl::get_alphabet<Kind>(), ctx.buf_, ctx.sig_,
-                                                      first);
-        // no effect when family is base16 and CHAR_BIT is 8*
+        if constexpr (detail::get_family<Kind>() == rfc4648_kind::base64)
+            encode_impl::encode_impl_b64_ctx<Padding>(encode_impl::get_alphabet<Kind>(), ctx.buf_, ctx.sig_, first);
+        if constexpr (detail::get_family<Kind>() == rfc4648_kind::base32)
+            encode_impl::encode_impl_b32_ctx<Padding>(encode_impl::get_alphabet<Kind>(), ctx.buf_, ctx.sig_, first);
+        // no effect when family is base16 and CHAR_BIT is 8
 
         return first;
     }
@@ -587,7 +561,6 @@ struct rfc4648_encode_fn
 } // namespace encode_impl
 
 using encode_impl::rfc4648_ctx;
-using encode_impl::rfc4648_kind;
 
 inline constexpr encode_impl::rfc4648_encode_fn rfc4648_encode;
 } // namespace bizwen
