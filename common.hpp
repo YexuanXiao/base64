@@ -39,6 +39,25 @@ template <rfc4648_kind Kind> inline consteval auto get_family()
     else
         return rfc4648_kind::base32;
 }
+
 } // namespace detail
+
+namespace encode_impl
+{
+// forward declaration for friend
+struct rfc4648_encode_fn;
+} // namespace encode_impl
+
+class rfc4648_ctx
+{
+    // 0、1、2 for base64 encode; 0 - 4 for base32 encode
+    alignas(int) unsigned char sig_{};
+    alignas(int) unsigned char buf_[4];
+
+    friend encode_impl::rfc4648_encode_fn;
+};
+
+using buf_ref = unsigned char (&)[4];
+using sig_ref = unsigned char &;
 
 } // namespace bizwen

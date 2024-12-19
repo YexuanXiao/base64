@@ -30,9 +30,6 @@ static inline constexpr auto base16 = base32_hex;
 static inline constexpr auto base16_lower = base32_hex_lower;
 }; // namespace pattern
 
-using buf_reference = unsigned char (&)[4];
-using sig_reference = unsigned char &;
-
 template <typename T> inline constexpr unsigned char to_uc(T t) noexcept
 {
     // T is char, unsigned char or std::byte
@@ -199,7 +196,7 @@ inline constexpr void encode_impl_b64(A alphabet, I begin, I end, O &first)
 }
 
 template <typename A, typename I, typename O>
-inline constexpr void encode_impl_b64_ctx(A alphabet, buf_reference buf, sig_reference sig, I begin, I end, O &first)
+inline constexpr void encode_impl_b64_ctx(A alphabet, buf_ref buf, sig_ref sig, I begin, I end, O &first)
 {
     if (sig == 2) // 0, 1, 2
     {
@@ -266,7 +263,7 @@ inline constexpr void encode_impl_b64_ctx(A alphabet, buf_reference buf, sig_ref
 }
 
 template <bool Padding, typename A, typename O>
-inline constexpr void encode_impl_b64_ctx(A alphabet, buf_reference buf, sig_reference sig, O &first)
+inline constexpr void encode_impl_b64_ctx(A alphabet, buf_ref buf, sig_ref sig, O &first)
 {
     if (sig == 2)
         encode_impl::encode_impl_b64_2<Padding>(alphabet, std::begin(buf), first);
@@ -427,7 +424,7 @@ inline constexpr void encode_impl_b32(A alphabet, I begin, I end, O &first)
 }
 
 template <typename A, typename I, typename O>
-inline constexpr void encode_impl_b32_ctx(A alphabet, buf_reference buf, sig_reference sig, I begin, I end, O &first)
+inline constexpr void encode_impl_b32_ctx(A alphabet, buf_ref buf, sig_ref sig, I begin, I end, O &first)
 {
 #if __has_cpp_attribute(assume)
     [[assume(sig < 5)]];
@@ -463,7 +460,7 @@ inline constexpr void encode_impl_b32_ctx(A alphabet, buf_reference buf, sig_ref
 }
 
 template <bool Padding, typename A, typename O>
-inline constexpr void encode_impl_b32_ctx(A alphabet, buf_reference buf, sig_reference sig, O &first)
+inline constexpr void encode_impl_b32_ctx(A alphabet, buf_ref buf, sig_ref sig, O &first)
 {
     if (sig == 1)
         encode_impl_b32_1<Padding>(alphabet, std::begin(buf), first);
@@ -511,16 +508,6 @@ inline constexpr void encode_impl_b16(A alphabet, I begin, I end, O &first)
         ++first;
     }
 }
-
-struct rfc4648_encode_fn;
-
-class rfc4648_ctx
-{
-    unsigned char sig_{}; // 0、1、2 for base64; 0 - 4 for base32
-    unsigned char buf_[4];
-
-    friend rfc4648_encode_fn;
-};
 
 struct rfc4648_encode_fn
 {
@@ -624,8 +611,6 @@ struct rfc4648_encode_fn
     }
 };
 } // namespace encode_impl
-
-using encode_impl::rfc4648_ctx;
 
 inline constexpr encode_impl::rfc4648_encode_fn rfc4648_encode;
 } // namespace bizwen
