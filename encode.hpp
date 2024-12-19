@@ -82,7 +82,7 @@ template <std::size_t Count, typename T> inline constexpr auto chars_to_int_big_
     {
         unsigned char buf[size]{};
 
-        for (std::size_t i{}; i < Count; ++i, ++begin)
+        for (std::size_t i{}; i != Count; ++i, ++begin)
             buf[i] = to_uc(*begin);
 
         if constexpr (std::endian::native == std::endian::little)
@@ -107,24 +107,36 @@ template <typename A, typename I, typename O> inline constexpr void encode_impl_
 {
     auto data = chars_to_int_big_endian<6>(begin);
 
-    *(first++) = alphabet[(data >> 58) & 63];
-    *(first++) = alphabet[(data >> 52) & 63];
-    *(first++) = alphabet[(data >> 46) & 63];
-    *(first++) = alphabet[(data >> 40) & 63];
-    *(first++) = alphabet[(data >> 34) & 63];
-    *(first++) = alphabet[(data >> 28) & 63];
-    *(first++) = alphabet[(data >> 22) & 63];
-    *(first++) = alphabet[(data >> 16) & 63];
+    *first = alphabet[(data >> 58) & 63];
+    ++first;
+    *first = alphabet[(data >> 52) & 63];
+    ++first;
+    *first = alphabet[(data >> 46) & 63];
+    ++first;
+    *first = alphabet[(data >> 40) & 63];
+    ++first;
+    *first = alphabet[(data >> 34) & 63];
+    ++first;
+    *first = alphabet[(data >> 28) & 63];
+    ++first;
+    *first = alphabet[(data >> 22) & 63];
+    ++first;
+    *first = alphabet[(data >> 16) & 63];
+    ++first;
 }
 
 template <typename A, typename I, typename O> inline constexpr void encode_impl_b64_3(A alphabet, I begin, O &first)
 {
     auto data = chars_to_int_big_endian<3>(begin);
 
-    *(first++) = alphabet[(data >> 26) & 63];
-    *(first++) = alphabet[(data >> 20) & 63];
-    *(first++) = alphabet[(data >> 14) & 63];
-    *(first++) = alphabet[(data >> 8) & 63];
+    *first = alphabet[(data >> 26) & 63];
+    ++first;
+    *first = alphabet[(data >> 20) & 63];
+    ++first;
+    *first = alphabet[(data >> 14) & 63];
+    ++first;
+    *first = alphabet[(data >> 8) & 63];
+    ++first;
 }
 
 template <bool Padding, typename A, typename I, typename O>
@@ -132,12 +144,17 @@ inline constexpr void encode_impl_b64_2(A alphabet, I begin, O &first)
 {
     auto data = chars_to_int_big_endian<2>(begin);
 
-    *(first++) = alphabet[(data >> 26) & 63];
-    *(first++) = alphabet[(data >> 20) & 63];
-    *(first++) = alphabet[(data >> 14) & 63];
+    *first = alphabet[(data >> 26) & 63];
+    ++first;
+    *first = alphabet[(data >> 20) & 63];
+    ++first;
+    *first = alphabet[(data >> 14) & 63];
 
     if constexpr (Padding)
-        *(first++) = alphabet[64];
+    {
+        *first = alphabet[64];
+        ++first;
+    }
 }
 
 template <bool Padding, typename A, typename I, typename O>
@@ -147,13 +164,17 @@ inline constexpr void encode_impl_b64_1(A alphabet, I begin, O &first)
     auto b = a >> 2;        // XXXXXX
     auto c = (a << 4) & 63; // XX0000
 
-    *(first++) = alphabet[b];
-    *(first++) = alphabet[c];
+    *first = alphabet[b];
+    ++first;
+    *first = alphabet[c];
+    ++first;
 
     if constexpr (Padding)
     {
-        *(first++) = alphabet[64]; // pad1
-        *(first++) = alphabet[64]; // pad2
+        *first = alphabet[64]; // pad1
+        ++first;
+        *first = alphabet[64]; // pad2
+        ++first;
     }
 }
 
@@ -261,14 +282,22 @@ template <typename A, typename I, typename O> inline constexpr void encode_impl_
 {
     auto data = chars_to_int_big_endian<5>(begin);
 
-    *(first++) = alphabet[(data >> 59) & 31];
-    *(first++) = alphabet[(data >> 54) & 31];
-    *(first++) = alphabet[(data >> 49) & 31];
-    *(first++) = alphabet[(data >> 44) & 31];
-    *(first++) = alphabet[(data >> 39) & 31];
-    *(first++) = alphabet[(data >> 34) & 31];
-    *(first++) = alphabet[(data >> 29) & 31];
-    *(first++) = alphabet[(data >> 24) & 31];
+    *first = alphabet[(data >> 59) & 31];
+    ++first;
+    *first = alphabet[(data >> 54) & 31];
+    ++first;
+    *first = alphabet[(data >> 49) & 31];
+    ++first;
+    *first = alphabet[(data >> 44) & 31];
+    ++first;
+    *first = alphabet[(data >> 39) & 31];
+    ++first;
+    *first = alphabet[(data >> 34) & 31];
+    ++first;
+    *first = alphabet[(data >> 29) & 31];
+    ++first;
+    *first = alphabet[(data >> 24) & 31];
+    ++first;
 }
 
 template <bool Padding, typename A, typename I, typename O>
@@ -276,17 +305,27 @@ inline constexpr void encode_impl_b32_4(A alphabet, I begin, O &first)
 {
     auto data = chars_to_int_big_endian<4>(begin);
 
-    *(first++) = alphabet[(data >> 27) & 31];
-    *(first++) = alphabet[(data >> 22) & 31];
-    *(first++) = alphabet[(data >> 17) & 31];
-    *(first++) = alphabet[(data >> 12) & 31];
-    *(first++) = alphabet[(data >> 7) & 31];
-    *(first++) = alphabet[(data >> 2) & 31];
+    *first = alphabet[(data >> 27) & 31];
+    ++first;
+    *first = alphabet[(data >> 22) & 31];
+    ++first;
+    *first = alphabet[(data >> 17) & 31];
+    ++first;
+    *first = alphabet[(data >> 12) & 31];
+    ++first;
+    *first = alphabet[(data >> 7) & 31];
+    ++first;
+    *first = alphabet[(data >> 2) & 31];
+    ++first;
     // NB: left shift
-    *(first++) = alphabet[(data << 3) & 31];
+    *first = alphabet[(data << 3) & 31];
+    ++first;
 
     if constexpr (Padding)
-        *(first++) = alphabet[32];
+    {
+        *first = alphabet[32];
+        ++first;
+    }
 }
 
 template <bool Padding, typename A, typename I, typename O>
@@ -294,17 +333,25 @@ inline constexpr void encode_impl_b32_3(A alphabet, I begin, O &first)
 {
     auto data = chars_to_int_big_endian<3>(begin);
 
-    *(first++) = alphabet[(data >> 27) & 31];
-    *(first++) = alphabet[(data >> 22) & 31];
-    *(first++) = alphabet[(data >> 17) & 31];
-    *(first++) = alphabet[(data >> 12) & 31];
-    *(first++) = alphabet[(data >> 7) & 31];
+    *first = alphabet[(data >> 27) & 31];
+    ++first;
+    *first = alphabet[(data >> 22) & 31];
+    ++first;
+    *first = alphabet[(data >> 17) & 31];
+    ++first;
+    *first = alphabet[(data >> 12) & 31];
+    ++first;
+    *first = alphabet[(data >> 7) & 31];
+    ++first;
 
     if constexpr (Padding)
     {
-        *(first++) = alphabet[32];
-        *(first++) = alphabet[32];
-        *(first++) = alphabet[32];
+        *first = alphabet[32];
+        ++first;
+        *first = alphabet[32];
+        ++first;
+        *first = alphabet[32];
+        ++first;
     }
 }
 
@@ -313,17 +360,25 @@ inline constexpr void encode_impl_b32_2(A alphabet, I begin, O &first)
 {
     auto data = chars_to_int_big_endian<2>(begin);
 
-    *(first++) = alphabet[(data >> 27) & 31];
-    *(first++) = alphabet[(data >> 22) & 31];
-    *(first++) = alphabet[(data >> 17) & 31];
-    *(first++) = alphabet[(data >> 12) & 31];
+    *first = alphabet[(data >> 27) & 31];
+    ++first;
+    *first = alphabet[(data >> 22) & 31];
+    ++first;
+    *first = alphabet[(data >> 17) & 31];
+    ++first;
+    *first = alphabet[(data >> 12) & 31];
+    ++first;
 
     if constexpr (Padding)
     {
-        *(first++) = alphabet[32];
-        *(first++) = alphabet[32];
-        *(first++) = alphabet[32];
-        *(first++) = alphabet[32];
+        *first = alphabet[32];
+        ++first;
+        *first = alphabet[32];
+        ++first;
+        *first = alphabet[32];
+        ++first;
+        *first = alphabet[32];
+        ++first;
     }
 }
 
@@ -332,17 +387,25 @@ inline constexpr void encode_impl_b32_1(A alphabet, I begin, O &first)
 {
     auto a = to_uc(*(begin));
 
-    *(first++) = alphabet[a >> 3];
-    *(first++) = alphabet[(a << 2) & 31];
+    *first = alphabet[a >> 3];
+    ++first;
+    *first = alphabet[(a << 2) & 31];
+    ++first;
 
     if constexpr (Padding)
     {
-        *(first++) = alphabet[32];
-        *(first++) = alphabet[32];
-        *(first++) = alphabet[32];
-        *(first++) = alphabet[32];
-        *(first++) = alphabet[32];
-        *(first++) = alphabet[32];
+        *first = alphabet[32];
+        ++first;
+        *first = alphabet[32];
+        ++first;
+        *first = alphabet[32];
+        ++first;
+        *first = alphabet[32];
+        ++first;
+        *first = alphabet[32];
+        ++first;
+        *first = alphabet[32];
+        ++first;
     }
 }
 
@@ -442,8 +505,10 @@ inline constexpr void encode_impl_b16(A alphabet, I begin, I end, O &first)
     {
         auto data = to_uc(*begin);
 
-        *(first++) = alphabet[data >> 4];
-        *(first++) = alphabet[data & 15];
+        *first = alphabet[data >> 4];
+        ++first;
+        *first = alphabet[data & 15];
+        ++first;
     }
 }
 
