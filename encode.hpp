@@ -550,7 +550,7 @@ struct rfc4648_encode_fn
             const
 #endif
     {
-        return operator()<Kind, Padding>(r.begin(), r.end(), first);
+        return operator()<Kind, Padding>(std::ranges::begin(r), std::ranges::end(r), first);
     }
 
     // NB: don't need padding
@@ -595,7 +595,7 @@ struct rfc4648_encode_fn
             const
 #endif
     {
-        return operator()<Kind>(ctx, r.begin(), r.end(), first);
+        return operator()<Kind>(ctx, std::ranges::begin(r), std::ranges::end(r), first);
     }
 
     template <rfc4648_kind Kind = rfc4648_kind::base64, bool Padding = true, typename Out>

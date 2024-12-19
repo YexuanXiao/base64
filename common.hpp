@@ -48,13 +48,21 @@ namespace encode_impl
 struct rfc4648_encode_fn;
 } // namespace encode_impl
 
+namespace decode_impl
+{
+// forward declaration for friend
+struct rfc4648_decode_fn;
+} // namespace decode_impl
+
 class rfc4648_ctx
 {
     // 0、1、2 for base64 encode; 0 - 4 for base32 encode
+    // 0 - 4 for base64 decode, only buf[0] is significant
     alignas(int) unsigned char sig_{};
     alignas(int) unsigned char buf_[4];
 
     friend encode_impl::rfc4648_encode_fn;
+    friend decode_impl::rfc4648_decode_fn;
 };
 
 using buf_ref = unsigned char (&)[4];

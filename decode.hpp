@@ -228,8 +228,8 @@ template <typename Out> struct decode_status
     //          XXXX XXXX
     //                   XX XXXXXX
     Out &first;
-    int count; // 0, 1, 2, 3
-    unsigned char buf;
+    alignas(int) unsigned char sig_; // 0, 1, 2, 3, 4
+    alignas(int) unsigned char buf_;
 
     template <typename C> // breakline
     bool write(unsigned char const *table, C c)
@@ -239,33 +239,43 @@ template <typename Out> struct decode_status
         if (!is_valid(c, res))
             return false;
 
-        if (count == 0)
+        if (sig_ == 1)
         {
-            buf = res << 2;
-            ++count;
+            buf_ = res << 2;
+            ++sig_;
         }
-        else if (count == 1)
+        else if (sig_ == 2)
         {
-            *first = buf | res >> 4;
+            *first = buf_ | res >> 4;
             ++first;
-            buf = (res & 0xF) << 4;
-            ++count;
+            buf_ = (res & 0xF) << 4;
+            ++sig_;
         }
-        else if (count == 2)
+        else if (sig_ == 3)
         {
-            *first = buf | (res >> 2);
+            *first = buf_ | (res >> 2);
             ++first;
-            buf = res << 6;
-            ++count;
+            buf_ = res << 6;
+            ++sig_;
         }
-        else if (count == 3)
+        else if (sig_ == 4)
         {
-            *first = buf | res;
+            *first = buf_ | res;
             ++first;
-            count = 0;
+            sig_ = 0;
         }
 
         return true;
+    }
+
+    void write(unsigned char const *table)
+    {
+        if (sig_)
+        {
+            *first = buf_;
+            ++first;
+            sig_ = 0;
+        }
     }
 };
 
@@ -274,7 +284,25 @@ inline constexpr In decode_impl_b64(unsigned char const *table, In begin, In end
 {
     static_assert(std::is_pointer_v<In>);
 
-    decode_status status{first, 0, 0};
+    decode_status status{first, 1, 0};
+
+    for (; begin != end; ++begin)
+    {
+        if (!status.write(table, *begin))
+            break;
+    }
+
+    status.write(table);
+
+    return begin;
+}
+template <typename In, typename Out>
+inline constexpr In decode_impl_b64_ctx(unsigned char const *table, sig_ref sig, buf_ref buf, In begin, In end,
+                                        Out &first)
+{
+    static_assert(std::is_pointer_v<In>);
+
+    decode_status status{first, sig, buf[0]};
 
     for (; begin != end; ++begin)
     {
@@ -284,7 +312,16 @@ inline constexpr In decode_impl_b64(unsigned char const *table, In begin, In end
 
     return begin;
 }
-} // namespace decode_impl
+
+template <typename In, typename Out>
+inline constexpr void decode_impl_b64_ctx(unsigned char const *table, sig_ref sig, buf_ref buf, Out &first)
+{
+    static_assert(std::is_pointer_v<In>);
+
+    decode_status status{first, sig, buf[0]};
+
+    status.write(table);
+}
 
 template <typename End, typename Out> struct rfc4648_decode_result
 {
@@ -292,29 +329,93 @@ template <typename End, typename Out> struct rfc4648_decode_result
     Out out;
 };
 
-template <rfc4648_kind Kind = rfc4648_kind::base64, typename In, typename Out>
-inline constexpr rfc4648_decode_result<In, Out> rfc4648_decode(In begin, In end, Out first)
+struct rfc4648_decode_fn
 {
-    using in_char = std::iterator_traits<In>::value_type;
+    template <rfc4648_kind Kind = rfc4648_kind::base64, typename In, typename Out>
+    inline constexpr rfc4648_decode_result<In, Out> operator()(In begin, In end, Out first) const
+    {
+        using in_char = std::iterator_traits<In>::value_type;
 
-    static_assert(std::contiguous_iterator<In>);
-    static_assert(std::is_same_v<in_char, char> || std::is_same_v<in_char, wchar_t> ||
-                  std::is_same_v<in_char, char8_t> || std::is_same_v<in_char, char16_t> ||
-                  std::is_same_v<in_char, char32_t>);
+        static_assert(std::contiguous_iterator<In>);
+        static_assert(std::is_same_v<in_char, char> || std::is_same_v<in_char, wchar_t> ||
+                      std::is_same_v<in_char, char8_t> || std::is_same_v<in_char, char16_t> ||
+                      std::is_same_v<in_char, char32_t>);
 
-    auto begin_ptr = detail::to_address_const(begin);
-    auto end_ptr = detail::to_address_const(end);
+        auto begin_ptr = detail::to_address_const(begin);
+        auto end_ptr = detail::to_address_const(end);
 
-    decltype(begin_ptr) last_ptr = {};
+        decltype(begin_ptr) last_ptr = {};
 
-    if constexpr (detail::get_family<Kind>() == rfc4648_kind::base64)
-        last_ptr = decode_impl::decode_impl_b64(decode_impl::get_table<Kind>(), begin_ptr, end_ptr, first);
-    if constexpr (detail::get_family<Kind>() == rfc4648_kind::base32)
-        ;
-    if constexpr (detail::get_family<Kind>() == rfc4648_kind::base16)
-        ;
+        if constexpr (detail::get_family<Kind>() == rfc4648_kind::base64)
+            last_ptr = decode_impl::decode_impl_b64(decode_impl::get_table<Kind>(), begin_ptr, end_ptr, first);
+        if constexpr (detail::get_family<Kind>() == rfc4648_kind::base32)
+            ;
+        if constexpr (detail::get_family<Kind>() == rfc4648_kind::base16)
+            ;
 
-    return {begin + (last_ptr - begin_ptr), std::move(first)};
-}
+        return {begin + (last_ptr - begin_ptr), std::move(first)};
+    }
+
+    template <rfc4648_kind Kind = rfc4648_kind::base64, typename R, typename Out>
+    inline constexpr auto operator()(R &&r, Out first) const
+    {
+        return operator()<Kind>(std::ranges::begin(r), std::ranges::end(r), first);
+    }
+
+    template <rfc4648_kind Kind = rfc4648_kind::base64, typename In, typename Out>
+    inline constexpr rfc4648_decode_result<In, Out> operator()(rfc4648_ctx &ctx, In begin, In end, Out first) const
+    {
+        using in_char = std::iterator_traits<In>::value_type;
+
+        static_assert(std::contiguous_iterator<In>);
+        static_assert(std::is_same_v<in_char, char> || std::is_same_v<in_char, wchar_t> ||
+                      std::is_same_v<in_char, char8_t> || std::is_same_v<in_char, char16_t> ||
+                      std::is_same_v<in_char, char32_t>);
+
+        auto begin_ptr = detail::to_address_const(begin);
+        auto end_ptr = detail::to_address_const(end);
+
+        decltype(begin_ptr) last_ptr = {};
+
+        if constexpr (detail::get_family<Kind>() == rfc4648_kind::base64)
+            last_ptr = decode_impl::decode_impl_b64_ctx(decode_impl::get_table<Kind>(), ctx.sig_, ctx.buf_, begin_ptr,
+                                                        end_ptr, first);
+        if constexpr (detail::get_family<Kind>() == rfc4648_kind::base32)
+            ;
+        if constexpr (detail::get_family<Kind>() == rfc4648_kind::base16)
+            ;
+
+        return {begin + (last_ptr - begin_ptr), std::move(first)};
+    }
+
+    template <rfc4648_kind Kind = rfc4648_kind::base64, typename R, typename Out>
+    inline constexpr auto operator()(rfc4648_ctx &ctx, R &&r, Out first) const
+    {
+        return operator()<Kind>(ctx, std::ranges::begin(r), std::ranges::end(r), first);
+    }
+
+    template <rfc4648_kind Kind = rfc4648_kind::base64, typename In, typename Out>
+    inline constexpr Out operator()(rfc4648_ctx &ctx, Out first) const
+    {
+        using in_char = std::iterator_traits<In>::value_type;
+
+        static_assert(std::contiguous_iterator<In>);
+        static_assert(std::is_same_v<in_char, char> || std::is_same_v<in_char, wchar_t> ||
+                      std::is_same_v<in_char, char8_t> || std::is_same_v<in_char, char16_t> ||
+                      std::is_same_v<in_char, char32_t>);
+
+        if constexpr (detail::get_family<Kind>() == rfc4648_kind::base64)
+            decode_impl::decode_impl_b64_ctx(decode_impl::get_table<Kind>(), ctx.sig_, ctx.buf_, first);
+        if constexpr (detail::get_family<Kind>() == rfc4648_kind::base32)
+            ;
+        if constexpr (detail::get_family<Kind>() == rfc4648_kind::base16)
+            ;
+
+        return first;
+    }
+};
+
+} // namespace decode_impl
+inline constexpr decode_impl::rfc4648_decode_fn rfc4648_decode;
 
 } // namespace bizwen
