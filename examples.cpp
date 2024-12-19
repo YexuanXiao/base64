@@ -1,12 +1,19 @@
+#include "decode.hpp"
 #include "encode.hpp"
+#include <cassert>
 #include <string>
+#include <string_view>
 
 int main()
 {
-    std::string src{"ABCDEFGHIJKLMN"};
-    std::string dest;
-    dest.resize((src.size() + 3) / 3 * 4);
-    bizwen::rfc4648_encode(src.begin(), src.end(), dest.begin());
+    std::string_view src{"ABCDEFGHIJKLMN"};
+    std::string encoded;
+    encoded.resize((src.size() + 3) / 3 * 4);
+    bizwen::rfc4648_encode(src.begin(), src.end(), encoded.begin());
+    std::string decoded;
+    decoded.resize(src.size());
+    bizwen::rfc4648_decode(encoded.begin(), encoded.end(), decoded.begin());
+    assert(encoded == decoded);
 
     std::string dest1;
     dest1.resize((src.size() * 3 + 3) / 3 * 4);
