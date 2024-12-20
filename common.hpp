@@ -60,6 +60,7 @@ class rfc4648_ctx
 {
     // 0、1、2 for base64 encode; 0 - 4 for base32 encode
     // 0 - 4 for base64 decode, only buf[0] is significant
+    // 0 - 8 for base32 decode, only buf[0] is significant
     alignas(int) unsigned char sig_{};
     alignas(int) unsigned char buf_[4];
 

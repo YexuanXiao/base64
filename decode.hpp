@@ -224,18 +224,27 @@ inline constexpr unsigned char decode_single(unsigned char const *table, T t) no
     return table[static_cast<unsigned char>(t)];
 }
 
-struct decode_status_b64
+struct decode_status_b64_b32
 {
+    // base64
     // 1      2      3      4
     // XXXXXX XXXXXX XXXXXX XXXXXX
     // XXXXXX XX
     //          XXXX XXXX
     //                   XX XXXXXX
-    alignas(int) unsigned char sig_{}; // 0, 1, 2, 3, 4
+    // base32
+    // 1     2     3     4     5     6     7     8
+    // XXXXX XXXXX XXXXX XXXXX XXXXX XXXXX XXXXX XXXXX
+    // XXXXX XXX
+    //          XX XXXXX X
+    //                    XXXX XXXX
+    //                             X XXXXX XX
+    //                                       XXX XXXXX
+    alignas(int) unsigned char sig_{}; // 0 - 4, 0 - 8
     alignas(int) unsigned char buf_;
 
     template <typename C, typename Out>
-    bool write(unsigned char const *table, C c, Out &first)
+    bool write_b64(unsigned char const *table, C c, Out &first)
     {
         ++sig_;
 
@@ -252,7 +261,7 @@ struct decode_status_b64
         {
             *first = buf_ | res >> 4;
             ++first;
-            buf_ = (res & 0xF) << 4;
+            buf_ = res << 4;
         }
         else if (sig_ == 3)
         {
@@ -271,6 +280,61 @@ struct decode_status_b64
         return true;
     }
 
+    template <typename C, typename Out>
+    bool write_b32(unsigned char const *table, C c, Out &first)
+    {
+        ++sig_;
+
+        auto res = decode_single(table, c);
+
+        if (!is_valid(c, res))
+            return false;
+
+        if (sig_ == 1)
+        {
+            buf_ = res << 3;
+        }
+        else if (sig_ == 2)
+        {
+            *first = buf_ | res >> 2;
+            ++first;
+            buf_ = res << 6;
+        }
+        else if (sig_ == 3)
+        {
+            buf_ |= res << 1;
+        }
+        else if (sig_ == 4)
+        {
+            *first = buf_ | res >> 4;
+            ++first;
+            buf_ = res << 4;
+        }
+        else if (sig_ == 5)
+        {
+            *first = buf_ | res >> 1;
+            ++first;
+            buf_ = res << 7;
+        }
+        else if (sig_ == 6)
+        {
+            buf_ |= res << 2;
+        }
+        else if (sig_ == 7)
+        {
+            *first = buf_ | res >> 3;
+            ++first;
+            buf_ = res << 5;
+        }
+        else if (sig_ == 8)
+        {
+            *first = buf_ | res;
+            ++first;
+            // NB: reset sig
+            sig_ = 0;
+        }
+    }
+
     template <typename Out>
     void write(unsigned char const *table, Out &first)
     {
@@ -284,15 +348,15 @@ struct decode_status_b64
 };
 
 template <typename In, typename Out>
-inline constexpr In decode_impl_b64(unsigned char const *table, In begin, In end, Out &first)
+inline constexpr In decode_impl_b32(unsigned char const *table, In begin, In end, Out &first)
 {
     static_assert(std::is_pointer_v<In>);
 
-    decode_status_b64 status{};
+    decode_status_b64_b32 status{};
 
     for (; begin != end; ++begin)
     {
-        if (!status.write(table, *begin, first))
+        if (!status.write_b64(table, *begin, first))
             break;
     }
 
@@ -300,17 +364,36 @@ inline constexpr In decode_impl_b64(unsigned char const *table, In begin, In end
 
     return begin;
 }
+
+template <typename In, typename Out>
+inline constexpr In decode_impl_b64(unsigned char const *table, In begin, In end, Out &first)
+{
+    static_assert(std::is_pointer_v<In>);
+
+    decode_status_b64_b32 status{};
+
+    for (; begin != end; ++begin)
+    {
+        if (!status.write_b64(table, *begin, first))
+            break;
+    }
+
+    status.write(table, first);
+
+    return begin;
+}
+
 template <typename In, typename Out>
 inline constexpr In decode_impl_b64_ctx(unsigned char const *table, sig_ref sig, buf_ref buf, In begin, In end,
                                         Out &first)
 {
     static_assert(std::is_pointer_v<In>);
 
-    decode_status_b64 status{sig, buf[0]};
+    decode_status_b64_b32 status{sig, buf[0]};
 
     for (; begin != end; ++begin)
     {
-        if (!status.write(table, *begin, first))
+        if (!status.write_b64(table, *begin, first))
             break;
     }
 
@@ -321,11 +404,31 @@ inline constexpr In decode_impl_b64_ctx(unsigned char const *table, sig_ref sig,
 }
 
 template <typename In, typename Out>
-inline constexpr void decode_impl_b64_ctx(unsigned char const *table, sig_ref sig, buf_ref buf, Out &first)
+inline constexpr In decode_impl_b32_ctx(unsigned char const *table, sig_ref sig, buf_ref buf, In begin, In end,
+                                        Out &first)
 {
     static_assert(std::is_pointer_v<In>);
 
-    decode_status_b64 status{sig, buf[0]};
+    decode_status_b64_b32 status{sig, buf[0]};
+
+    for (; begin != end; ++begin)
+    {
+        if (!status.write_b32(table, *begin, first))
+            break;
+    }
+
+    sig = status.sig_;
+    buf[0] = status.buf_;
+
+    return begin;
+}
+
+template <typename In, typename Out>
+inline constexpr void decode_impl_b64_b32_ctx(unsigned char const *table, sig_ref sig, buf_ref buf, Out &first)
+{
+    static_assert(std::is_pointer_v<In>);
+
+    decode_status_b64_b32 status{sig, buf[0]};
 
     status.write(table, first);
 }
@@ -357,7 +460,7 @@ struct rfc4648_decode_fn
         if constexpr (detail::get_family<Kind>() == rfc4648_kind::base64)
             last_ptr = decode_impl::decode_impl_b64(decode_impl::get_table<Kind>(), begin_ptr, end_ptr, first);
         if constexpr (detail::get_family<Kind>() == rfc4648_kind::base32)
-            ;
+            last_ptr = decode_impl::decode_impl_b32(decode_impl::get_table<Kind>(), begin_ptr, end_ptr, first);;
         if constexpr (detail::get_family<Kind>() == rfc4648_kind::base16)
             ;
 
@@ -389,7 +492,8 @@ struct rfc4648_decode_fn
             last_ptr = decode_impl::decode_impl_b64_ctx(decode_impl::get_table<Kind>(), ctx.sig_, ctx.buf_, begin_ptr,
                                                         end_ptr, first);
         if constexpr (detail::get_family<Kind>() == rfc4648_kind::base32)
-            ;
+            last_ptr = decode_impl::decode_impl_b32_ctx(decode_impl::get_table<Kind>(), ctx.sig_, ctx.buf_, begin_ptr,
+                                                        end_ptr, first);;
         if constexpr (detail::get_family<Kind>() == rfc4648_kind::base16)
             ;
 
@@ -413,9 +517,9 @@ struct rfc4648_decode_fn
                       std::is_same_v<in_char, char32_t>);
 
         if constexpr (detail::get_family<Kind>() == rfc4648_kind::base64)
-            decode_impl::decode_impl_b64_ctx(decode_impl::get_table<Kind>(), ctx.sig_, ctx.buf_, first);
+            decode_impl::decode_impl_b64_b32_ctx(decode_impl::get_table<Kind>(), ctx.sig_, ctx.buf_, first);
         if constexpr (detail::get_family<Kind>() == rfc4648_kind::base32)
-            ;
+            decode_impl::decode_impl_b64_b32_ctx(decode_impl::get_table<Kind>(), ctx.sig_, ctx.buf_, first);
         if constexpr (detail::get_family<Kind>() == rfc4648_kind::base16)
             ;
 
