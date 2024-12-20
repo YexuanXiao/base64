@@ -1,7 +1,11 @@
 #pragma once
 
-#include <memory>
-#include <type_traits>
+#include <memory> // std::to_address
+#include <type_traits> // std::remove_reference
+#include <climits>
+
+static_assert(CHAR_BIT == 8);
+
 namespace bizwen
 {
 
@@ -58,9 +62,12 @@ struct rfc4648_decode_fn;
 
 class rfc4648_ctx
 {
-    // 0、1、2 for base64 encode; 0 - 4 for base32 encode
-    // 0 - 4 for base64 decode, only buf[0] is significant
-    // 0 - 8 for base32 decode, only buf[0] is significant
+    // 0 - 2 for base64 encode, buf_[0 - 2] is significant
+    // 0 - 4 for base32 encode, buf_[0 - 4] is significant
+    // base16 encoding does not need ctx
+    // 0 - 4 for base64 decode, only buf_[0] is significant
+    // 0 - 8 for base32 decode, only buf_[0] is significant
+    // 0 - 2 for base16 decode, only buf_[0] is significant
     alignas(int) unsigned char sig_{};
     alignas(int) unsigned char buf_[4];
 

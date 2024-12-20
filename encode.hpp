@@ -2,13 +2,9 @@
 
 #include <algorithm>
 #include <bit>
-#include <climits>
 #include <concepts>
 #include <cstring>
 #include <iterator>
-#include <memory>
-#include <ranges>
-#include <type_traits>
 
 #include "./common.hpp"
 
@@ -66,7 +62,6 @@ template <std::size_t Count, typename T>
 inline constexpr auto chars_to_int_big_endian(T begin)
 {
     static_assert(Count < 9);
-    static_assert(CHAR_BIT == 8);
     static_assert(std::endian::native == std::endian::big || std::endian::native == std::endian::little);
 
     constexpr auto size = Count <= 4 ? 4 : 8;
@@ -461,7 +456,7 @@ inline constexpr void encode_impl_b32_ctx(A alphabet, buf_ref buf, sig_ref sig, 
 
     sig = static_cast<unsigned char>(end - begin);
 
-    for (std::size_t i{}; i < sig; ++i, ++begin)
+    for (std::size_t i{}; i != sig; ++i, ++begin)
         buf[i] = to_uc(*begin);
 }
 

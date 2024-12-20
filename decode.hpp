@@ -1,14 +1,9 @@
 #pragma once
 
-#include <algorithm>
-#include <bit>
-#include <climits>
 #include <concepts>
 #include <cstring>
 #include <iterator>
-#include <memory>
-#include <ranges>
-#include <type_traits>
+#include <utility>
 
 #include "./common.hpp"
 
@@ -246,12 +241,12 @@ struct decode_status_b64_b32
     template <typename C, typename Out>
     bool write_b64(unsigned char const *table, C c, Out &first)
     {
-        ++sig_;
-
         auto res = decode_single(table, c);
 
         if (!is_valid(c, res))
             return false;
+
+        ++sig_;
 
         if (sig_ == 1)
         {
@@ -276,6 +271,10 @@ struct decode_status_b64_b32
             // NB: reset sig
             sig_ = 0;
         }
+        else
+        {
+            std::unreachable();
+        }
 
         return true;
     }
@@ -283,12 +282,12 @@ struct decode_status_b64_b32
     template <typename C, typename Out>
     bool write_b32(unsigned char const *table, C c, Out &first)
     {
-        ++sig_;
-
         auto res = decode_single(table, c);
 
         if (!is_valid(c, res))
             return false;
+
+        ++sig_;
 
         if (sig_ == 1)
         {
@@ -333,6 +332,12 @@ struct decode_status_b64_b32
             // NB: reset sig
             sig_ = 0;
         }
+        else
+        {
+            std::unreachable();
+        }
+
+        return true;
     }
 
     template <typename Out>
@@ -431,6 +436,94 @@ inline constexpr void decode_impl_b64_b32_ctx(unsigned char const *table, sig_re
     decode_status_b64_b32 status{sig, buf[0]};
 
     status.write(table, first);
+
+    sig = 0;
+}
+
+template <typename In, typename Out>
+inline constexpr In decode_impl_b16(unsigned char const *table, In begin, In end, Out &first)
+{
+    static_assert(std::is_pointer_v<In>);
+
+    unsigned char sig{};
+    unsigned char buf;
+
+    for (; begin != end; ++begin)
+    {
+        auto c = *begin;
+        auto res = decode_single(table, c);
+
+        if (!is_valid(c, res))
+            break;
+
+        ++sig;
+
+        if (sig == 1)
+        {
+            buf = res << 4;
+        }
+        else if (sig == 2)
+        {
+            *first = buf | res;
+            ++first;
+            sig = 0;
+        }
+    }
+
+    if (sig)
+    {
+        *first = buf;
+        ++first;
+    }
+
+    return begin;
+}
+
+template <typename In, typename Out>
+inline constexpr In decode_impl_b16_ctx(unsigned char const *table, sig_ref sig, buf_ref buf, In begin, In end,
+                                        Out &first)
+{
+    static_assert(std::is_pointer_v<In>);
+
+    for (; begin != end; ++begin)
+    {
+        auto c = *begin;
+        auto res = decode_single(table, c);
+
+        if (!is_valid(c, res))
+            break;
+
+        ++sig;
+
+        if (sig == 1)
+        {
+            buf[0] = res << 4;
+            sig = 1;
+        }
+        else if (sig == 2)
+        {
+            *first = buf[0] | res;
+            ++first;
+            sig = 0;
+        }
+        else
+        {
+            std::unreachable();
+        }
+    }
+
+    return begin;
+}
+
+template <typename Out>
+inline constexpr void decode_impl_b16_ctx(unsigned char const *table, sig_ref sig, buf_ref buf, Out &first)
+{
+    if (sig)
+    {
+        *first = buf[0];
+        ++first;
+        sig = 0;
+    }
 }
 
 template <typename End, typename Out>
@@ -443,7 +536,14 @@ struct rfc4648_decode_result
 struct rfc4648_decode_fn
 {
     template <rfc4648_kind Kind = rfc4648_kind::base64, typename In, typename Out>
-    inline constexpr rfc4648_decode_result<In, Out> operator()(In begin, In end, Out first) const
+#if defined(__cpp_static_call_operator) && __cpp_static_call_operator >= 202207L
+    static
+#endif
+        inline constexpr rfc4648_decode_result<In, Out>
+        operator()(In begin, In end, Out first)
+#if !defined(__cpp_static_call_operator) || __cpp_static_call_operator < 202207L
+            const
+#endif
     {
         using in_char = std::iterator_traits<In>::value_type;
 
@@ -460,21 +560,37 @@ struct rfc4648_decode_fn
         if constexpr (detail::get_family<Kind>() == rfc4648_kind::base64)
             last_ptr = decode_impl::decode_impl_b64(decode_impl::get_table<Kind>(), begin_ptr, end_ptr, first);
         if constexpr (detail::get_family<Kind>() == rfc4648_kind::base32)
-            last_ptr = decode_impl::decode_impl_b32(decode_impl::get_table<Kind>(), begin_ptr, end_ptr, first);;
+            last_ptr = decode_impl::decode_impl_b32(decode_impl::get_table<Kind>(), begin_ptr, end_ptr, first);
+        ;
         if constexpr (detail::get_family<Kind>() == rfc4648_kind::base16)
-            ;
+            last_ptr = decode_impl::decode_impl_b16(decode_impl::get_table<Kind>(), begin_ptr, end_ptr, first);
+        ;
 
         return {begin + (last_ptr - begin_ptr), std::move(first)};
     }
 
     template <rfc4648_kind Kind = rfc4648_kind::base64, typename R, typename Out>
-    inline constexpr auto operator()(R &&r, Out first) const
+#if defined(__cpp_static_call_operator) && __cpp_static_call_operator >= 202207L
+    static
+#endif
+        inline constexpr auto
+        operator()(R &&r, Out first)
+#if !defined(__cpp_static_call_operator) || __cpp_static_call_operator < 202207L
+            const
+#endif
     {
         return operator()<Kind>(std::ranges::begin(r), std::ranges::end(r), first);
     }
 
     template <rfc4648_kind Kind = rfc4648_kind::base64, typename In, typename Out>
-    inline constexpr rfc4648_decode_result<In, Out> operator()(rfc4648_ctx &ctx, In begin, In end, Out first) const
+#if defined(__cpp_static_call_operator) && __cpp_static_call_operator >= 202207L
+    static
+#endif
+        inline constexpr rfc4648_decode_result<In, Out>
+        operator()(rfc4648_ctx &ctx, In begin, In end, Out first)
+#if !defined(__cpp_static_call_operator) || __cpp_static_call_operator < 202207L
+            const
+#endif
     {
         using in_char = std::iterator_traits<In>::value_type;
 
@@ -493,21 +609,38 @@ struct rfc4648_decode_fn
                                                         end_ptr, first);
         if constexpr (detail::get_family<Kind>() == rfc4648_kind::base32)
             last_ptr = decode_impl::decode_impl_b32_ctx(decode_impl::get_table<Kind>(), ctx.sig_, ctx.buf_, begin_ptr,
-                                                        end_ptr, first);;
+                                                        end_ptr, first);
+        ;
         if constexpr (detail::get_family<Kind>() == rfc4648_kind::base16)
-            ;
+            last_ptr = decode_impl::decode_impl_b16_ctx(decode_impl::get_table<Kind>(), ctx.sig_, ctx.buf_, begin_ptr,
+                                                        end_ptr, first);
+        ;
 
         return {begin + (last_ptr - begin_ptr), std::move(first)};
     }
 
     template <rfc4648_kind Kind = rfc4648_kind::base64, typename R, typename Out>
-    inline constexpr auto operator()(rfc4648_ctx &ctx, R &&r, Out first) const
+#if defined(__cpp_static_call_operator) && __cpp_static_call_operator >= 202207L
+    static
+#endif
+        inline constexpr auto
+        operator()(rfc4648_ctx &ctx, R &&r, Out first)
+#if !defined(__cpp_static_call_operator) || __cpp_static_call_operator < 202207L
+            const
+#endif
     {
         return operator()<Kind>(ctx, std::ranges::begin(r), std::ranges::end(r), first);
     }
 
     template <rfc4648_kind Kind = rfc4648_kind::base64, typename In, typename Out>
-    inline constexpr Out operator()(rfc4648_ctx &ctx, Out first) const
+#if defined(__cpp_static_call_operator) && __cpp_static_call_operator >= 202207L
+    static
+#endif
+        inline constexpr Out
+        operator()(rfc4648_ctx &ctx, Out first)
+#if !defined(__cpp_static_call_operator) || __cpp_static_call_operator < 202207L
+            const
+#endif
     {
         using in_char = std::iterator_traits<In>::value_type;
 
@@ -521,13 +654,14 @@ struct rfc4648_decode_fn
         if constexpr (detail::get_family<Kind>() == rfc4648_kind::base32)
             decode_impl::decode_impl_b64_b32_ctx(decode_impl::get_table<Kind>(), ctx.sig_, ctx.buf_, first);
         if constexpr (detail::get_family<Kind>() == rfc4648_kind::base16)
-            ;
+            decode_impl::decode_impl_b16_ctx(decode_impl::get_table<Kind>(), ctx.sig_, ctx.buf_, first);
 
         return first;
     }
 };
 
 } // namespace decode_impl
-inline constexpr decode_impl::rfc4648_decode_fn rfc4648_decode;
 
+using decode_impl::rfc4648_decode_result;
+inline constexpr decode_impl::rfc4648_decode_fn rfc4648_decode;
 } // namespace bizwen

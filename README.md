@@ -1,6 +1,6 @@
-# base64
+# rfc4648/base64/base32/base16-hex
 
-A plain header-only [RFC 4648](https://www.rfc-editor.org/rfc/rfc4648) encoding library, but with the most modern C++ API design.
+A plain header-only [RFC 4648](https://www.rfc-editor.org/rfc/rfc4648) encoding/decoding library, but with the most modern C++ API design.
 
 All variants of RFC 4648 are supported and the Crockford variant is available.
 
@@ -10,11 +10,7 @@ Support non-padding for secure base64 url variant.
 
 Support `constexpr` compile-time caculation.
 
-C++23 required (`consteval`, concepts, endian and byteswap).
-
-## Status
-
-encode done.
+C++23 required (`std::byteswap`).
 
 ## Synopsis
 
@@ -36,7 +32,15 @@ enum class rfc4648_kind
 };
 // All special member functions are trivial and has non-trivial but noexcept default constructor
 class rfc4648_ctx;
+//
+template <typename In, typename Out>
+struct rfc4648_decode_result
+{
+    In end;
+    Out out;
+};
 // All overloads are constexpr
+// Encode
 template <rfc4648_kind Kind = rfc4648_kind::base64, bool Padding = true, typename In, typename Out>
 Out rfc4648_encode(In begin, In end, Out first);
 template <rfc4648_kind Kind = rfc4648_kind::base64, bool Padding = true, typename R, typename Out>
@@ -47,50 +51,64 @@ template <rfc4648_kind Kind = rfc4648_kind::base64, typename R, typename Out>
 Out rfc4648_encode(rfc4648_ctx& ctx, R&& r, Out first);
 template <rfc4648_kind Kind = rfc4648_kind::base64, bool Padding = true, typename Out>
 Out rfc4648_encode(rfc4648_ctx& ctx, Out first);
+// Decode
+template <rfc4648_kind Kind = rfc4648_kind::base64, typename In, typename Out>
+rfc4648_decode_result<In, Out> rfc4648_decode(In begin, In end, Out first);
+template <rfc4648_kind Kind = rfc4648_kind::base64, typename R, typename Out>
+rfc4648_decode_result<In, Out> rfc4648_decode(R&& r, Out first);
+template <rfc4648_kind Kind = rfc4648_kind::base64, typename In, typename Out>
+rfc4648_decode_result<In, Out> rfc4648_decode(rfc4648_ctx& ctx, In begin, In end, Out first);
+template <rfc4648_kind Kind = rfc4648_kind::base64, typename R, typename Out>
+rfc4648_decode_result<In, Out> rfc4648_decode(rfc4648_ctx& ctx, R&& r, Out first);
+template <rfc4648_kind Kind = rfc4648_kind::base64, typename Out>
+Out rfc4648_decode(rfc4648_ctx& ctx, Out first);
 ```
 
-`R` must satisfy *ContinuousContainer* , `In` must satisfy *ContinuousIterator* and `Out` must satisfy *OutputIterator*.
+`R` must model `std::contiguous_range` , `In` must satisfy *ContinuousIterator* and `Out` must satisfy *OutputIterator*.
 
-Let `n` is the length of the output as specified by RFC 4648.
+Let `n - 1` is the length of the output as specified by RFC 4648.
 
-If [`begin`, `end`) is not a valid range, or [`first`, `first + n`) is not a valid range, or if [`begin`, `end`) and [`first`, `first + n`) overlap, or if `r` and `first` overlap, the behavior is undefined.
+If [`begin`, `end`) is not a valid range, or [`first`, `first + n`) is not a valid range, or if [`begin`, `end`) and [`first`, `first + n`) overlap, or if `r` and [`first`, `first + n`) overlap, the behavior is undefined.
 
-Throws any exceptions from incrementing `first`. After an exception is thrown, [`first`, `first + n`) holds unspecified values, and `ctx` will be in an unspecified state.
+If the template parameter `Padding` is false then the padding character `=` is not written.
+
+The decode functions will return immediately if there are invalid characters (including `=`) within the range [`begin`, `end`), then `rfc4648_decode_result<In, Out>::end` points to the first invalid character.
+
+Throws any exceptions from incrementing `first`, no other exceptions will be thrown. After an exception is thrown, `ctx` will be in an unspecified state.
 
 ## Example
 
 ```cpp
-#include <string>
+#include "decode.hpp"
 #include "encode.hpp"
+#include <cassert>
+#include <string>
+#include <string_view>
 int main()
 {
-    std::string src{ "ABCDEFGHIJKLMN" };
+    std::string_view src{"ABCDEFGHIJKLMN"};
+    std::string encoded;
+    encoded.resize((src.size() + 3) / 3 * 4);
+    bizwen::rfc4648_encode(src.begin(), src.end(), encoded.begin());
+    std::string decoded;
+    decoded.resize(src.size());
+    bizwen::rfc4648_decode(encoded.begin(), encoded.end(), decoded.begin());
+    assert(encoded == decoded);
 
-    // single input buffer
-    std::string dest;
-    dest.resize((src.size() + 3) / 3 * 4);
-    bizwen::rfc4648_encode(src.begin(), src.end(), dest.begin());
-
-    // discontinuous multiple buffers
     std::string dest1;
     dest1.resize((src.size() * 3 + 3) / 3 * 4);
-    // init context
     bizwen::rfc4648_ctx ctx;
-    // init encode
     auto it = bizwen::rfc4648_encode(ctx, src.begin(), src.end(), dest1.begin());
     it = bizwen::rfc4648_encode(ctx, src.begin(), src.end(), it);
     it = bizwen::rfc4648_encode(ctx, src.begin(), src.end(), it);
-    // final
-    it = rfc4648_encode(ctx, it);
+    bizwen::rfc4648_encode(ctx, it);
 
-    // ranges
     std::string dest2;
     dest2.resize((src.size() + 3) / 3 * 4);
     bizwen::rfc4648_encode(src, dest2.begin());
 
-    // byte array and wstring
     std::wstring dest3;
     dest3.resize((src.size() + 3) / 3 * 4);
-    bizwen::rfc4648_encode((std::byte*)src.data(), (std::byte*)src.data() + src.size(), dest3.begin());
+    bizwen::rfc4648_encode((std::byte *)src.data(), (std::byte *)src.data() + src.size(), dest3.begin());
 }
 ```
