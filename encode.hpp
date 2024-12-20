@@ -30,13 +30,15 @@ static inline constexpr auto base16 = base32_hex;
 static inline constexpr auto base16_lower = base32_hex_lower;
 }; // namespace pattern
 
-template <typename T> inline constexpr unsigned char to_uc(T t) noexcept
+template <typename T>
+inline constexpr unsigned char to_uc(T t) noexcept
 {
     // T is char, unsigned char or std::byte
     return static_cast<unsigned char>(t);
 }
 
-template <rfc4648_kind Kind> inline consteval auto get_alphabet() noexcept
+template <rfc4648_kind Kind>
+inline consteval auto get_alphabet() noexcept
 {
     if constexpr (Kind == rfc4648_kind::base64)
         return pattern::base64;
@@ -60,7 +62,8 @@ template <rfc4648_kind Kind> inline consteval auto get_alphabet() noexcept
         return pattern::base16_lower;
 }
 
-template <std::size_t Count, typename T> inline constexpr auto chars_to_int_big_endian(T begin)
+template <std::size_t Count, typename T>
+inline constexpr auto chars_to_int_big_endian(T begin)
 {
     static_assert(Count < 9);
     static_assert(CHAR_BIT == 8);
@@ -100,7 +103,8 @@ template <std::size_t Count, typename T> inline constexpr auto chars_to_int_big_
     }
 }
 
-template <typename A, typename I, typename O> inline constexpr void encode_impl_b64_6(A alphabet, I begin, O &first)
+template <typename A, typename I, typename O>
+inline constexpr void encode_impl_b64_6(A alphabet, I begin, O &first)
 {
     auto data = chars_to_int_big_endian<6>(begin);
 
@@ -122,7 +126,8 @@ template <typename A, typename I, typename O> inline constexpr void encode_impl_
     ++first;
 }
 
-template <typename A, typename I, typename O> inline constexpr void encode_impl_b64_3(A alphabet, I begin, O &first)
+template <typename A, typename I, typename O>
+inline constexpr void encode_impl_b64_3(A alphabet, I begin, O &first)
 {
     auto data = chars_to_int_big_endian<3>(begin);
 
@@ -275,7 +280,8 @@ inline constexpr void encode_impl_b64_ctx(A alphabet, buf_ref buf, sig_ref sig, 
     sig = 0;
 }
 
-template <typename A, typename I, typename O> inline constexpr void encode_impl_b32_5(A alphabet, I begin, O &first)
+template <typename A, typename I, typename O>
+inline constexpr void encode_impl_b32_5(A alphabet, I begin, O &first)
 {
     auto data = chars_to_int_big_endian<5>(begin);
 

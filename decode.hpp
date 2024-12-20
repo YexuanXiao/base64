@@ -170,7 +170,8 @@ static inline constexpr unsigned char base16_lower[] = {
     0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 } // namespace table
 
-template <rfc4648_kind Kind> inline consteval auto get_table() noexcept
+template <rfc4648_kind Kind>
+inline consteval auto get_table() noexcept
 {
     if constexpr (Kind == rfc4648_kind::base64)
         return table::base64;
@@ -194,7 +195,8 @@ template <rfc4648_kind Kind> inline consteval auto get_table() noexcept
         return table::base16_lower;
 }
 
-template <typename T> inline constexpr bool valid_stage1(T t)
+template <typename T>
+inline constexpr bool valid_stage1(T t)
 {
     using u = std::make_unsigned_t<T>;
 
@@ -209,18 +211,21 @@ inline constexpr bool valid_stage2(unsigned char t)
     return t != 0xFF;
 }
 
-template <typename T> inline constexpr bool is_valid(T t, unsigned char u)
+template <typename T>
+inline constexpr bool is_valid(T t, unsigned char u)
 {
     static_assert(!std::is_same_v<unsigned char, T>);
     return valid_stage1(t) && valid_stage2(u);
 }
 
-template <typename T> inline constexpr unsigned char decode_impl_single(unsigned char const *table, T t)
+template <typename T>
+inline constexpr unsigned char decode_impl_single(unsigned char const *table, T t)
 {
     return table[static_cast<unsigned char>(t)];
 }
 
-template <typename Out> struct decode_status
+template <typename Out>
+struct decode_status_64
 {
     // 0      1      2      3
     // XXXXXX XXXXXX XXXXXX XXXXXX
@@ -231,7 +236,7 @@ template <typename Out> struct decode_status
     alignas(int) unsigned char sig_; // 0, 1, 2, 3, 4
     alignas(int) unsigned char buf_;
 
-    template <typename C> // breakline
+    template <typename C>
     bool write(unsigned char const *table, C c)
     {
         auto res = decode_impl_single(table, c);
@@ -284,7 +289,7 @@ inline constexpr In decode_impl_b64(unsigned char const *table, In begin, In end
 {
     static_assert(std::is_pointer_v<In>);
 
-    decode_status status{first, 1, 0};
+    decode_status_64 status{first, 1, 0};
 
     for (; begin != end; ++begin)
     {
@@ -302,7 +307,7 @@ inline constexpr In decode_impl_b64_ctx(unsigned char const *table, sig_ref sig,
 {
     static_assert(std::is_pointer_v<In>);
 
-    decode_status status{first, sig, buf[0]};
+    decode_status_64 status{first, sig, buf[0]};
 
     for (; begin != end; ++begin)
     {
@@ -318,12 +323,13 @@ inline constexpr void decode_impl_b64_ctx(unsigned char const *table, sig_ref si
 {
     static_assert(std::is_pointer_v<In>);
 
-    decode_status status{first, sig, buf[0]};
+    decode_status_64 status{first, sig, buf[0]};
 
     status.write(table);
 }
 
-template <typename End, typename Out> struct rfc4648_decode_result
+template <typename End, typename Out>
+struct rfc4648_decode_result
 {
     End end;
     Out out;
