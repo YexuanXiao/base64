@@ -196,7 +196,7 @@ inline consteval auto get_table() noexcept
 }
 
 template <typename T>
-inline constexpr bool valid_stage1(T t)
+inline constexpr bool valid_stage1(T t) noexcept
 {
     using u = std::make_unsigned_t<T>;
 
@@ -206,40 +206,40 @@ inline constexpr bool valid_stage1(T t)
         return !(u(t) & ~u(0xFF));
 }
 
-inline constexpr bool valid_stage2(unsigned char t)
+inline constexpr bool valid_stage2(unsigned char t) noexcept
 {
     return t != 0xFF;
 }
 
 template <typename T>
-inline constexpr bool is_valid(T t, unsigned char u)
+inline constexpr bool is_valid(T t, unsigned char u) noexcept
 {
     static_assert(!std::is_same_v<unsigned char, T>);
     return valid_stage1(t) && valid_stage2(u);
 }
 
 template <typename T>
-inline constexpr unsigned char decode_impl_single(unsigned char const *table, T t)
+inline constexpr unsigned char decode_single(unsigned char const *table, T t) noexcept
 {
     return table[static_cast<unsigned char>(t)];
 }
 
-template <typename Out>
-struct decode_status_64
+struct decode_status_b64
 {
-    // 0      1      2      3
+    // 1      2      3      4
     // XXXXXX XXXXXX XXXXXX XXXXXX
     // XXXXXX XX
     //          XXXX XXXX
     //                   XX XXXXXX
-    Out &first;
-    alignas(int) unsigned char sig_; // 0, 1, 2, 3, 4
+    alignas(int) unsigned char sig_{}; // 0, 1, 2, 3, 4
     alignas(int) unsigned char buf_;
 
-    template <typename C>
-    bool write(unsigned char const *table, C c)
+    template <typename C, typename Out>
+    bool write(unsigned char const *table, C c, Out &first)
     {
-        auto res = decode_impl_single(table, c);
+        ++sig_;
+
+        auto res = decode_single(table, c);
 
         if (!is_valid(c, res))
             return false;
@@ -247,33 +247,32 @@ struct decode_status_64
         if (sig_ == 1)
         {
             buf_ = res << 2;
-            ++sig_;
         }
         else if (sig_ == 2)
         {
             *first = buf_ | res >> 4;
             ++first;
             buf_ = (res & 0xF) << 4;
-            ++sig_;
         }
         else if (sig_ == 3)
         {
             *first = buf_ | (res >> 2);
             ++first;
             buf_ = res << 6;
-            ++sig_;
         }
         else if (sig_ == 4)
         {
             *first = buf_ | res;
             ++first;
+            // NB: reset sig
             sig_ = 0;
         }
 
         return true;
     }
 
-    void write(unsigned char const *table)
+    template <typename Out>
+    void write(unsigned char const *table, Out &first)
     {
         if (sig_)
         {
@@ -289,15 +288,15 @@ inline constexpr In decode_impl_b64(unsigned char const *table, In begin, In end
 {
     static_assert(std::is_pointer_v<In>);
 
-    decode_status_64 status{first, 1, 0};
+    decode_status_b64 status{};
 
     for (; begin != end; ++begin)
     {
-        if (!status.write(table, *begin))
+        if (!status.write(table, *begin, first))
             break;
     }
 
-    status.write(table);
+    status.write(table, first);
 
     return begin;
 }
@@ -307,13 +306,16 @@ inline constexpr In decode_impl_b64_ctx(unsigned char const *table, sig_ref sig,
 {
     static_assert(std::is_pointer_v<In>);
 
-    decode_status_64 status{first, sig, buf[0]};
+    decode_status_b64 status{sig, buf[0]};
 
     for (; begin != end; ++begin)
     {
-        if (!status.write(table, *begin))
+        if (!status.write(table, *begin, first))
             break;
     }
+
+    sig = status.sig_;
+    buf[0] = status.buf_;
 
     return begin;
 }
@@ -323,9 +325,9 @@ inline constexpr void decode_impl_b64_ctx(unsigned char const *table, sig_ref si
 {
     static_assert(std::is_pointer_v<In>);
 
-    decode_status_64 status{first, sig, buf[0]};
+    decode_status_b64 status{sig, buf[0]};
 
-    status.write(table);
+    status.write(table, first);
 }
 
 template <typename End, typename Out>
