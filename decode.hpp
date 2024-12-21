@@ -389,7 +389,7 @@ inline constexpr In decode_impl_b64(unsigned char const *table, In begin, In end
 }
 
 template <typename In, typename Out>
-inline constexpr In decode_impl_b64_ctx(unsigned char const *table, sig_ref sig, buf_ref buf, In begin, In end,
+inline constexpr In decode_impl_b64_ctx(unsigned char const *table, detail::sig_ref sig, detail::buf_ref buf, In begin, In end,
                                         Out &first)
 {
     static_assert(std::is_pointer_v<In>);
@@ -409,7 +409,7 @@ inline constexpr In decode_impl_b64_ctx(unsigned char const *table, sig_ref sig,
 }
 
 template <typename In, typename Out>
-inline constexpr In decode_impl_b32_ctx(unsigned char const *table, sig_ref sig, buf_ref buf, In begin, In end,
+inline constexpr In decode_impl_b32_ctx(unsigned char const *table, detail::sig_ref sig, detail::buf_ref buf, In begin, In end,
                                         Out &first)
 {
     static_assert(std::is_pointer_v<In>);
@@ -429,7 +429,7 @@ inline constexpr In decode_impl_b32_ctx(unsigned char const *table, sig_ref sig,
 }
 
 template <typename In, typename Out>
-inline constexpr void decode_impl_b64_b32_ctx(unsigned char const *table, sig_ref sig, buf_ref buf, Out &first)
+inline constexpr void decode_impl_b64_b32_ctx(unsigned char const *table, detail::sig_ref sig, detail::buf_ref buf, Out &first)
 {
     static_assert(std::is_pointer_v<In>);
 
@@ -480,7 +480,7 @@ inline constexpr In decode_impl_b16(unsigned char const *table, In begin, In end
 }
 
 template <typename In, typename Out>
-inline constexpr In decode_impl_b16_ctx(unsigned char const *table, sig_ref sig, buf_ref buf, In begin, In end,
+inline constexpr In decode_impl_b16_ctx(unsigned char const *table, detail::sig_ref sig, detail::buf_ref buf, In begin, In end,
                                         Out &first)
 {
     static_assert(std::is_pointer_v<In>);
@@ -516,7 +516,7 @@ inline constexpr In decode_impl_b16_ctx(unsigned char const *table, sig_ref sig,
 }
 
 template <typename Out>
-inline constexpr void decode_impl_b16_ctx(unsigned char const *table, sig_ref sig, buf_ref buf, Out &first)
+inline constexpr void decode_impl_b16_ctx(unsigned char const *table, detail::sig_ref sig, detail::buf_ref buf, Out &first)
 {
     if (sig)
     {
@@ -587,7 +587,7 @@ struct rfc4648_decode_fn
     static
 #endif
         inline constexpr rfc4648_decode_result<In, Out>
-        operator()(rfc4648_ctx &ctx, In begin, In end, Out first)
+        operator()(rfc4648_context &ctx, In begin, In end, Out first)
 #if !defined(__cpp_static_call_operator) || __cpp_static_call_operator < 202207L
             const
 #endif
@@ -624,7 +624,7 @@ struct rfc4648_decode_fn
     static
 #endif
         inline constexpr auto
-        operator()(rfc4648_ctx &ctx, R &&r, Out first)
+        operator()(rfc4648_context &ctx, R &&r, Out first)
 #if !defined(__cpp_static_call_operator) || __cpp_static_call_operator < 202207L
             const
 #endif
@@ -637,7 +637,7 @@ struct rfc4648_decode_fn
     static
 #endif
         inline constexpr Out
-        operator()(rfc4648_ctx &ctx, Out first)
+        operator()(rfc4648_context &ctx, Out first)
 #if !defined(__cpp_static_call_operator) || __cpp_static_call_operator < 202207L
             const
 #endif

@@ -31,7 +31,7 @@ enum class rfc4648_kind
     hex_lower = base16_lower
 };
 // All special member functions are trivial and has non-trivial but noexcept default constructor
-class rfc4648_ctx;
+class rfc4648_context;
 //
 template <typename In, typename Out>
 struct rfc4648_decode_result
@@ -46,22 +46,22 @@ Out rfc4648_encode(In begin, In end, Out first);
 template <rfc4648_kind Kind = rfc4648_kind::base64, bool Padding = true, typename R, typename Out>
 Out rfc4648_encode(R&& r, Out first);
 template <rfc4648_kind Kind = rfc4648_kind::base64, typename In, typename Out>
-Out rfc4648_encode(rfc4648_ctx& ctx, In begin, In end, Out first);
+Out rfc4648_encode(rfc4648_context& ctx, In begin, In end, Out first);
 template <rfc4648_kind Kind = rfc4648_kind::base64, typename R, typename Out>
-Out rfc4648_encode(rfc4648_ctx& ctx, R&& r, Out first);
+Out rfc4648_encode(rfc4648_context& ctx, R&& r, Out first);
 template <rfc4648_kind Kind = rfc4648_kind::base64, bool Padding = true, typename Out>
-Out rfc4648_encode(rfc4648_ctx& ctx, Out first);
+Out rfc4648_encode(rfc4648_context& ctx, Out first);
 // Decode
 template <rfc4648_kind Kind = rfc4648_kind::base64, typename In, typename Out>
 rfc4648_decode_result<In, Out> rfc4648_decode(In begin, In end, Out first);
 template <rfc4648_kind Kind = rfc4648_kind::base64, typename R, typename Out>
 rfc4648_decode_result<In, Out> rfc4648_decode(R&& r, Out first);
 template <rfc4648_kind Kind = rfc4648_kind::base64, typename In, typename Out>
-rfc4648_decode_result<In, Out> rfc4648_decode(rfc4648_ctx& ctx, In begin, In end, Out first);
+rfc4648_decode_result<In, Out> rfc4648_decode(rfc4648_context& ctx, In begin, In end, Out first);
 template <rfc4648_kind Kind = rfc4648_kind::base64, typename R, typename Out>
-rfc4648_decode_result<In, Out> rfc4648_decode(rfc4648_ctx& ctx, R&& r, Out first);
+rfc4648_decode_result<In, Out> rfc4648_decode(rfc4648_context& ctx, R&& r, Out first);
 template <rfc4648_kind Kind = rfc4648_kind::base64, typename Out>
-Out rfc4648_decode(rfc4648_ctx& ctx, Out first);
+Out rfc4648_decode(rfc4648_context& ctx, Out first);
 ```
 
 `R` must model `std::contiguous_range` , `In` must satisfy *ContinuousIterator* and `Out` must satisfy *OutputIterator*.
@@ -97,7 +97,7 @@ int main()
 
     std::string dest1;
     dest1.resize((src.size() * 3 + 3) / 3 * 4);
-    bizwen::rfc4648_ctx ctx;
+    bizwen::rfc4648_context ctx;
     auto it = bizwen::rfc4648_encode(ctx, src.begin(), src.end(), dest1.begin());
     it = bizwen::rfc4648_encode(ctx, src.begin(), src.end(), it);
     it = bizwen::rfc4648_encode(ctx, src.begin(), src.end(), it);

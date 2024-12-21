@@ -196,7 +196,7 @@ inline constexpr void encode_impl_b64(A alphabet, I begin, I end, O &first)
 }
 
 template <typename A, typename I, typename O>
-inline constexpr void encode_impl_b64_ctx(A alphabet, buf_ref buf, sig_ref sig, I begin, I end, O &first)
+inline constexpr void encode_impl_b64_ctx(A alphabet, detail::buf_ref buf, detail::sig_ref sig, I begin, I end, O &first)
 {
     if (sig == 2) // 0, 1, 2
     {
@@ -263,7 +263,7 @@ inline constexpr void encode_impl_b64_ctx(A alphabet, buf_ref buf, sig_ref sig, 
 }
 
 template <bool Padding, typename A, typename O>
-inline constexpr void encode_impl_b64_ctx(A alphabet, buf_ref buf, sig_ref sig, O &first)
+inline constexpr void encode_impl_b64_ctx(A alphabet, detail::buf_ref buf, detail::sig_ref sig, O &first)
 {
     if (sig == 2)
         encode_impl::encode_impl_b64_2<Padding>(alphabet, std::begin(buf), first);
@@ -425,7 +425,7 @@ inline constexpr void encode_impl_b32(A alphabet, I begin, I end, O &first)
 }
 
 template <typename A, typename I, typename O>
-inline constexpr void encode_impl_b32_ctx(A alphabet, buf_ref buf, sig_ref sig, I begin, I end, O &first)
+inline constexpr void encode_impl_b32_ctx(A alphabet, detail::buf_ref buf, detail::sig_ref sig, I begin, I end, O &first)
 {
 #if __has_cpp_attribute(assume)
     [[assume(sig < 5)]];
@@ -461,7 +461,7 @@ inline constexpr void encode_impl_b32_ctx(A alphabet, buf_ref buf, sig_ref sig, 
 }
 
 template <bool Padding, typename A, typename O>
-inline constexpr void encode_impl_b32_ctx(A alphabet, buf_ref buf, sig_ref sig, O &first)
+inline constexpr void encode_impl_b32_ctx(A alphabet, detail::buf_ref buf, detail::sig_ref sig, O &first)
 {
     if (sig == 1)
         encode_impl_b32_1<Padding>(alphabet, std::begin(buf), first);
@@ -560,7 +560,7 @@ struct rfc4648_encode_fn
     static
 #endif
         inline constexpr Out
-        operator()(rfc4648_ctx &ctx, In begin, In end, Out first)
+        operator()(rfc4648_context &ctx, In begin, In end, Out first)
 #if !defined(__cpp_static_call_operator) || __cpp_static_call_operator < 202207L
             const
 #endif
@@ -591,7 +591,7 @@ struct rfc4648_encode_fn
     static
 #endif
         inline constexpr Out
-        operator()(rfc4648_ctx &ctx, R &&r, Out first)
+        operator()(rfc4648_context &ctx, R &&r, Out first)
 #if !defined(__cpp_static_call_operator) || __cpp_static_call_operator < 202207L
             const
 #endif
@@ -600,7 +600,7 @@ struct rfc4648_encode_fn
     }
 
     template <rfc4648_kind Kind = rfc4648_kind::base64, bool Padding = true, typename Out>
-    inline constexpr Out operator()(rfc4648_ctx &ctx, Out first) const
+    inline constexpr Out operator()(rfc4648_context &ctx, Out first) const
     {
         if constexpr (detail::get_family<Kind>() == rfc4648_kind::base64)
             encode_impl::encode_impl_b64_ctx<Padding>(encode_impl::get_alphabet<Kind>(), ctx.buf_, ctx.sig_, first);

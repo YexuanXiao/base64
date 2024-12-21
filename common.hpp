@@ -46,6 +46,9 @@ inline consteval auto get_family()
         return rfc4648_kind::base32;
 }
 
+using buf_ref = unsigned char (&)[4];
+using sig_ref = unsigned char &;
+
 } // namespace detail
 
 namespace encode_impl
@@ -60,7 +63,7 @@ namespace decode_impl
 struct rfc4648_decode_fn;
 } // namespace decode_impl
 
-class rfc4648_ctx
+class rfc4648_context
 {
     // 0 - 2 for base64 encode, buf_[0 - 2] is significant
     // 0 - 4 for base32 encode, buf_[0 - 4] is significant
@@ -74,8 +77,5 @@ class rfc4648_ctx
     friend encode_impl::rfc4648_encode_fn;
     friend decode_impl::rfc4648_decode_fn;
 };
-
-using buf_ref = unsigned char (&)[4];
-using sig_ref = unsigned char &;
 
 } // namespace bizwen
